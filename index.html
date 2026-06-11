@@ -1207,9 +1207,10 @@ function calcPts(g1p,g2p,g1r,g2r,zebraLevel){
     }
   }
 
-  // Zebra bonus — só se acertou o vencedor (rp===rr e rr!==0)
-  if(zebraLevel&&typeof zebraLevel==='object'&&zebraLevel.nivel>0&&zebraLevel.time){
-    if(rp===rr&&rr!==0){
+ // Zebra bonus — só se apostou NO TIME ZEBRA e ele venceu
+  if(zebraLevel&&typeof zebraLevel==='object'&&zebraLevel.nivel>0&&zebraLevel.side){
+    var zebraSideNum=zebraLevel.side==='t1'?1:2;
+    if(rp===zebraSideNum&&rr===zebraSideNum){
       var zNivel=zebraLevel.nivel;
       var bonus=zNivel===2?10:5;
       var tag=zNivel===2?' 🦓🦓 +'+bonus+'pts':' 🦓 +'+bonus+'pts';
