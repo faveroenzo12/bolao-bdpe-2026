@@ -222,6 +222,7 @@ select option{background:#001d4a;color:#ffffff;}::-webkit-scrollbar-track{backgr
   <div class="nav-inner">
     <button class="nav-btn active" onclick="goPage('palpites',this)">⚽ Palpites</button>
     <button class="nav-btn" onclick="goPage('tabela',this)">🏅 Tabela</button>
+<button class="nav-btn" id="btnTabelaApostada" onclick="goPage('tabela-apostada',this)" style="display:none">💰 Apostados</button>
     <button class="nav-btn" onclick="goPage('chat',this)">💬 Chat</button>
     <button class="nav-btn" onclick="goPage('pontuacao',this)">📋 Pontuação</button>
     <button class="nav-btn" onclick="goPage('matamata',this)">🏆 Mata-Mata</button>
@@ -300,7 +301,18 @@ select option{background:#001d4a;color:#ffffff;}::-webkit-scrollbar-track{backgr
   <div id="matchList"></div>
 </div>
 
-<!-- PAGE: TABELA -->
+<!-- PAGE: TABELA APOSTADA -->
+<div class="page" id="page-tabela-apostada">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;">💰 Tabela Apostada</div>
+    <button class="btn-sm" onclick="renderTabelaApostada()">↻ Atualizar</button>
+  </div>
+  <div class="card" style="margin-bottom:16px;padding:10px 16px;background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.25);font-family:Barlow Condensed,sans-serif;font-size:13px;color:var(--yellow);">
+    💰 Ranking dos participantes com dinheiro apostado
+  </div>
+  <div id="tabelaApostadaContent"></div>
+</div>
+  <!-- PAGE: TABELA -->
 <div class="page" id="page-tabela">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
     <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;">🏅 Tabela de Participantes</div>
@@ -773,7 +785,7 @@ async function loadMyPicks() {
 async function loadAdmData() {
   try {
     var [u, p, pm, ep] = await Promise.all([
-      sbGet('usuarios', 'select=nick,pwd_hash,created_at&order=created_at.asc'),
+      sbGet('usuarios', 'select=nick,pwd_hash,created_at,apostado&order=created_at.asc'),
       sbGet('palpites', 'select=nick,jogo_id,g1,g2,saved_at'),
       sbGet('palpites_mm', 'select=nick,jogo_id,g1,g2,saved_at'),
       sbGet('especiais_picks', 'select=nick,tipo,valor,valor2,saved_at')
@@ -839,12 +851,13 @@ async function doLogin() {
   errEl.style.display = 'none';
   var hash = simpleHash(pwd);
   try {
-    var rows = await sbGet('usuarios', 'select=nick,pwd_hash&nick=eq.'+encodeURIComponent(nick)+'&limit=1');
+    var rows = await sbGet('usuarios', 'select=nick,pwd_hash,apostado&nick=eq.'+encodeURIComponent(nick)+'&limit=1');
     if (!rows.length || rows[0].pwd_hash !== hash) { errEl.style.display='block'; return; }
     currentNick = nick;
     currentHash = hash;
     localStorage.setItem('bdpe_nick', currentNick);
     localStorage.setItem('bdpe_hash', currentHash);
+    localStorage.setItem('bdpe_apostado', rows[0].apostado ? '1' : '0');
     document.getElementById('loginNick').value=''; document.getElementById('loginPwd').value='';
     await loadMyPicks();
     renderUserBar(); render();
@@ -854,8 +867,10 @@ async function doLogin() {
 
 function logout() {
   currentNick=null; currentHash=null;
-  localStorage.removeItem('bdpe_nick'); localStorage.removeItem('bdpe_hash');
+  localStorage.removeItem('bdpe_nick'); localStorage.removeItem('bdpe_hash'); localStorage.removeItem('bdpe_apostado');
   myPalpites={}; myPalpitesMM={};
+  var btnTA=document.getElementById('btnTabelaApostada');
+  if(btnTA) btnTA.style.display='none';
   renderUserBar(); render();
 }
 
@@ -868,6 +883,9 @@ function renderUserBar() {
     document.getElementById('uNameDisp').textContent = '⚽ '+currentNick;
     document.getElementById('uSubDisp').textContent  = count+' palpites · '+mmCount+' mata-mata';
     uBar.classList.add('show'); authForms.style.display='none';
+    var btnTA=document.getElementById('btnTabelaApostada');
+    if(btnTA) btnTA.style.display=localStorage.getItem('bdpe_apostado')==='1'?'':'none';
+    // Mostrar aba apostada só para apostados
   } else {
     uBar.classList.remove('show'); authForms.style.display='';
   }
@@ -883,6 +901,8 @@ function goPage(id, btn) {
   if (id==='matamata')  renderMataMata();
   if (id==='stats')     renderStatsPage();
   if (id==='especiais') renderEspeciais();
+  if (id==='chat') initChat();
+  if (id==='tabela-apostada') renderTabelaApostada();
   if (id==='chat') initChat();
   if (id==='adm' && document.getElementById('admContent').classList.contains('show')) renderAdm();
 }
@@ -2563,6 +2583,36 @@ async function deletarChatMsg(id) {
     if (el) el.remove();
   } catch(e) { showToast('err', 'Erro: ' + e.message); }
 }
+async function renderTabelaApostada() {
+  var el=document.getElementById('tabelaApostadaContent'); if(!el) return;
+  el.innerHTML='<div class="card" style="text-align:center;padding:30px;color:var(--gray);font-family:Barlow Condensed,sans-serif;">Carregando...</div>';
+  await Promise.all([loadAll(), loadAdmData()]);
+  var apostados=allUsers.filter(function(u){return u.apostado;});
+  if(!apostados.length){
+    el.innerHTML='<div class="card" style="text-align:center;padding:40px;color:var(--gray);">Nenhum participante apostado.</div>';
+    return;
+  }
+  var ranked=apostados.map(function(u){
+    var t=calcTotalUser(u.nick);
+    return {nick:u.nick,pts:t.pts,exact:t.exact,jogosFeitos:t.jogosFeitos,espPts:t.espPts||0};
+  }).sort(function(a,b){return b.pts-a.pts||b.exact-a.exact;});
+  var medals=['🥇','🥈','🥉'], rows='';
+  ranked.forEach(function(p,i){
+    var posLbl=i<3?medals[i]:String(i+1);
+    var posStyle=i===0?'color:#fbbf24;':i===1?'color:#94a3b8;':i===2?'color:#cd7c2f;':'color:var(--gray);';
+    rows+='<tr>'
+      +'<td><span style="font-family:Bebas Neue,sans-serif;font-size:22px;'+posStyle+'">'+posLbl+'</span></td>'
+      +'<td><div style="font-family:Barlow Condensed,sans-serif;font-size:16px;font-weight:700;">'+p.nick+'</div>'
+      +'<div style="font-size:11px;color:var(--gray);">'+p.jogosFeitos+' palpites · '+p.exact+' exatos'+(p.espPts?' · <span style="color:var(--yellow);">+'+p.espPts+'pts esp.</span>':'')+'</div></td>'
+      +'<td style="text-align:right"><span style="font-family:Bebas Neue,sans-serif;font-size:24px;color:var(--yellow);">'+p.pts+'</span></td>'
+      +'</tr>';
+  });
+  var comRes=Object.keys(resultados).length;
+  el.innerHTML='<div class="card" style="padding:0;overflow:hidden;">'
+    +'<table class="rank-table"><thead><tr><th>#</th><th>Participante</th><th style="text-align:right">Pts</th></tr></thead>'
+    +'<tbody>'+rows+'</tbody></table></div>'
+    +'<div style="margin-top:10px;font-family:Barlow Condensed,sans-serif;font-size:12px;color:var(--gray);text-align:center;">'+comRes+' resultados lançados · Atualizado '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'</div>';
+}
   // ── INIT ──
 async function init() {
   // Mostrar botão ADM se URL tiver ?adm=1
@@ -2575,9 +2625,10 @@ async function init() {
   var savedHash=localStorage.getItem('bdpe_hash');
   if (savedNick && savedHash) {
     try {
-      var rows=await sbGet('usuarios','select=nick,pwd_hash&nick=eq.'+encodeURIComponent(savedNick)+'&limit=1');
+      var rows=await sbGet('usuarios','select=nick,pwd_hash,apostado&nick=eq.'+encodeURIComponent(savedNick)+'&limit=1');
       if (rows.length && rows[0].pwd_hash===savedHash) {
         currentNick=savedNick; currentHash=savedHash;
+        localStorage.setItem('bdpe_apostado', rows[0].apostado ? '1' : '0');
       } else {
         localStorage.removeItem('bdpe_nick'); localStorage.removeItem('bdpe_hash');
       }
