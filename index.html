@@ -184,8 +184,30 @@ header::after{content:'';position:absolute;inset:0;background:repeating-linear-g
 ::-webkit-scrollbar{width:5px}
 select option{background:#001d4a;color:#ffffff;}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:3px}
 @media(max-width:480px){.score-num{width:46px;height:46px;font-size:26px;}.team-flag{width:34px;height:22px;}}
+  /* CHAT */
+.chat-wrap{display:flex;flex-direction:column;height:calc(100vh - 220px);min-height:400px;}
+.chat-msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:14px;background:rgba(0,0,0,.2);border-radius:12px;border:1px solid var(--border);margin-bottom:12px;}
+.chat-msg{display:flex;flex-direction:column;gap:2px;max-width:85%;}
+.chat-msg.mine{align-self:flex-end;align-items:flex-end;}
+.chat-msg.other{align-self:flex-start;align-items:flex-start;}
+.chat-bubble{padding:8px 12px;border-radius:12px;font-family:'Barlow',sans-serif;font-size:14px;line-height:1.4;word-break:break-word;}
+.chat-msg.mine .chat-bubble{background:linear-gradient(135deg,var(--red),var(--red-dark));color:var(--white);border-bottom-right-radius:3px;}
+.chat-msg.other .chat-bubble{background:rgba(255,255,255,.1);color:var(--white);border-bottom-left-radius:3px;}
+.chat-nick{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--gray);padding:0 4px;}
+.chat-time{font-family:'Barlow Condensed',sans-serif;font-size:10px;color:rgba(255,255,255,.3);padding:0 4px;}
+.chat-input-row{display:flex;gap:8px;align-items:flex-end;}
+.chat-input{flex:1;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.15);border-radius:10px;padding:10px 14px;color:var(--white);font-family:'Barlow',sans-serif;font-size:14px;outline:none;resize:none;max-height:100px;transition:border-color .2s;}
+.chat-input:focus{border-color:var(--blue-light);}
+.chat-input::placeholder{color:rgba(255,255,255,.3);}
+.chat-send{background:linear-gradient(135deg,var(--blue-light),var(--blue));border:none;color:white;padding:10px 16px;border-radius:10px;font-size:18px;cursor:pointer;transition:all .2s;flex-shrink:0;}
+.chat-send:hover{filter:brightness(1.15);}
+.chat-send:disabled{opacity:.4;cursor:not-allowed;filter:none;}
+.chat-del{background:none;border:none;color:var(--gray);font-size:11px;cursor:pointer;padding:2px 4px;opacity:0;transition:opacity .2s;}
+.chat-msg:hover .chat-del{opacity:1;}
+.chat-del:hover{color:#ff8899;}
 </style>
-<link rel="icon" href="favicon.ico" type="image/x-icon">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
 </head>
 <body>
 <header>
@@ -200,6 +222,7 @@ select option{background:#001d4a;color:#ffffff;}::-webkit-scrollbar-track{backgr
   <div class="nav-inner">
     <button class="nav-btn active" onclick="goPage('palpites',this)">⚽ Palpites</button>
     <button class="nav-btn" onclick="goPage('tabela',this)">🏅 Tabela</button>
+    <button class="nav-btn" onclick="goPage('chat',this)">💬 Chat</button>
     <button class="nav-btn" onclick="goPage('pontuacao',this)">📋 Pontuação</button>
     <button class="nav-btn" onclick="goPage('matamata',this)">🏆 Mata-Mata</button>
     <button class="nav-btn" onclick="goPage('stats',this)">📊 Estatísticas</button>
@@ -286,7 +309,23 @@ select option{background:#001d4a;color:#ffffff;}::-webkit-scrollbar-track{backgr
   <div id="tabelaContent"></div>
 </div>
 
-<!-- PAGE: PONTUACAO -->
+<!-- PAGE: CHAT -->
+<div class="page" id="page-chat">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;">💬 Chat BDPE</div>
+    <div id="chatOnline" style="font-family:'Barlow Condensed',sans-serif;font-size:12px;color:var(--green);"></div>
+  </div>
+  <div id="chatLocked" class="card" style="text-align:center;padding:32px;color:var(--gray);font-family:Barlow Condensed,sans-serif;font-size:15px;display:none;">🔐 Entre com sua conta para participar do chat.</div>
+  <div id="chatWrap" class="chat-wrap" style="display:none;">
+    <div class="chat-msgs" id="chatMsgs"></div>
+    <div class="chat-input-row">
+      <textarea class="chat-input" id="chatInput" placeholder="Digite uma mensagem..." rows="1" maxlength="300" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviarChat();}"></textarea>
+      <button class="chat-send" id="chatSendBtn" onclick="enviarChat()">➤</button>
+    </div>
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:var(--gray);text-align:right;margin-top:4px;"><span id="chatCharCount">0</span>/300</div>
+  </div>
+</div>
+  <!-- PAGE: PONTUACAO -->
 <div class="page" id="page-pontuacao">
   <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;margin-bottom:20px;">📋 Sistema de Pontuação</div>
   <div class="card">
@@ -660,6 +699,8 @@ async function sbDelete(table, filter) {
 
 // ── STATE ──
 var SUPA_URL_SET = true;
+// Cliente Supabase para Realtime
+window._supabaseClient = window.supabase ? window.supabase.createClient(SUPA_URL, SUPA_KEY) : null;
 var currentNick = null;   // logged-in nick
 var currentHash = null;   // pwd hash of logged-in user
 var resultados  = {};     // { jogoId: {g1,g2} }
@@ -842,6 +883,7 @@ function goPage(id, btn) {
   if (id==='matamata')  renderMataMata();
   if (id==='stats')     renderStatsPage();
   if (id==='especiais') renderEspeciais();
+  if (id==='chat') initChat();
   if (id==='adm' && document.getElementById('admContent').classList.contains('show')) renderAdm();
 }
 
@@ -2383,6 +2425,125 @@ async function loadPalpitesJogo(jid, panel) {
   } catch(e) {
     panel.innerHTML='<div style="padding:10px 15px;font-family:Barlow Condensed,sans-serif;font-size:12px;color:#ff8899;">Erro ao carregar palpites.</div>';
   }
+}
+// ══════════════════════════════════════════
+// CHAT
+// ══════════════════════════════════════════
+var chatChannel = null;
+var chatAdmMode = false;
+
+function initChat() {
+  var logado = !!currentNick;
+  document.getElementById('chatLocked').style.display = logado ? 'none' : 'block';
+  document.getElementById('chatWrap').style.display = logado ? 'flex' : 'none';
+  if (!logado) return;
+
+  // Verificar se é ADM (URL tem ?adm=1)
+  chatAdmMode = new URLSearchParams(window.location.search).get('adm') === '1';
+
+  // Contador de caracteres
+  var input = document.getElementById('chatInput');
+  input.addEventListener('input', function() {
+    document.getElementById('chatCharCount').textContent = input.value.length;
+    // Auto-resize
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 100) + 'px';
+  });
+
+  // Carregar mensagens iniciais
+  loadChatMsgs();
+
+  // Subscrever ao Realtime
+  if (chatChannel) chatChannel.unsubscribe();
+  chatChannel = window._supabaseClient
+    .channel('chat')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, function(payload) {
+      appendChatMsg(payload.new);
+      scrollChat();
+    })
+    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'chat_messages' }, function(payload) {
+      var el = document.getElementById('cmsg_' + payload.old.id);
+      if (el) el.remove();
+    })
+    .subscribe();
+}
+
+async function loadChatMsgs() {
+  try {
+    var msgs = await sbGet('chat_messages', 'select=id,nick,mensagem,created_at&order=created_at.asc&limit=100');
+    var el = document.getElementById('chatMsgs');
+    el.innerHTML = '';
+    msgs.forEach(function(m) { appendChatMsg(m); });
+    scrollChat();
+  } catch(e) { console.error('loadChatMsgs:', e); }
+}
+
+function appendChatMsg(m) {
+  var el = document.getElementById('chatMsgs');
+  var isMe = m.nick === currentNick;
+  var time = new Date(m.created_at).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+  var div = document.createElement('div');
+  div.className = 'chat-msg ' + (isMe ? 'mine' : 'other');
+  div.id = 'cmsg_' + m.id;
+  var delBtn = (chatAdmMode || isMe)
+    ? '<button class="chat-del" onclick="deletarChatMsg(\''+m.id+'\')" title="Apagar">✕</button>'
+    : '';
+  div.innerHTML = '<div class="chat-nick">' + m.nick + delBtn + '</div>'
+    + '<div class="chat-bubble">' + escapeHtml(m.mensagem) + '</div>'
+    + '<div class="chat-time">' + time + '</div>';
+  el.appendChild(div);
+}
+
+function scrollChat() {
+  var el = document.getElementById('chatMsgs');
+  if (el) el.scrollTop = el.scrollHeight;
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function enviarChat() {
+  if (!currentNick) return;
+  var input = document.getElementById('chatInput');
+  var msg = input.value.trim();
+  if (!msg) return;
+  var btn = document.getElementById('chatSendBtn');
+  btn.disabled = true;
+  try {
+    var r = await fetch(EDGE_BASE + '/send-chat', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','apikey':SUPA_KEY},
+      body: JSON.stringify({nick: currentNick, pwd_hash: currentHash, mensagem: msg})
+    });
+    var d = await r.json();
+    if (!r.ok) { showToast('err', d.error || 'Erro ao enviar'); return; }
+    input.value = '';
+    input.style.height = 'auto';
+    document.getElementById('chatCharCount').textContent = '0';
+  } catch(e) { showToast('err', 'Erro: ' + e.message); }
+  finally { btn.disabled = false; input.focus(); }
+}
+
+async function deletarChatMsg(id) {
+  try {
+    // ADM usa adm-action, utilizador apaga a própria via sbDelete direto não funciona (REVOKE)
+    // Usamos adm-action se admToken disponível, senão apenas remove visualmente para o próprio
+    if (admToken) {
+      var r = await fetch(EDGE_BASE + '/adm-action', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','apikey':SUPA_KEY},
+        body: JSON.stringify({adm_pwd: admToken, action: 'delete_chat_msg', msg_id: id})
+      });
+      var d = await r.json();
+      if (!r.ok) { showToast('err', d.error || 'Erro'); return; }
+    } else {
+      // Utilizador apaga a própria mensagem
+      await sbDelete('chat_messages', 'id=eq.' + id + '&nick=eq.' + encodeURIComponent(currentNick));
+    }
+    var el = document.getElementById('cmsg_' + id);
+    if (el) el.remove();
+  } catch(e) { showToast('err', 'Erro: ' + e.message); }
 }
   // ── INIT ──
 async function init() {
