@@ -278,10 +278,10 @@ select option{background:#001d4a;color:#ffffff;}::-webkit-scrollbar-track{backgr
   </div>
 
   <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('grupos',this)">📋 Por Grupo</button>
-    <button class="tab-btn" onclick="switchTab('dias',this)">📅 Por Dia</button>
+    <button class="tab-btn" onclick="switchTab('grupos',this)">📋 Por Grupo</button>
+<button class="tab-btn active" onclick="switchTab('dias',this)">📅 Por Dia</button>
   </div>
-  <div class="filter-row" id="fGrupos">
+  <div class="filter-row" id="fGrupos" style="display:none">
     <button class="filter-btn active" onclick="setFilter('grupo','TODOS',this)">Todos</button>
     <button class="filter-btn" onclick="setFilter('grupo','A',this)">A</button>
     <button class="filter-btn" onclick="setFilter('grupo','B',this)">B</button>
@@ -296,7 +296,7 @@ select option{background:#001d4a;color:#ffffff;}::-webkit-scrollbar-track{backgr
     <button class="filter-btn" onclick="setFilter('grupo','K',this)">K</button>
     <button class="filter-btn" onclick="setFilter('grupo','L',this)">L</button>
   </div>
-  <div class="filter-row" id="fDias" style="display:none"></div>
+  <div class="filter-row" id="fDias"></div>
   <div id="matchList"></div>
 </div>
 
@@ -715,7 +715,7 @@ var allPalpites = [];     // [{nick, jogo_id, g1, g2, saved_at}]
 var allPalpitesMM = [];   // [{nick, jogo_id, g1, g2, saved_at}]
 var myPalpites  = {};     // { jogoId: {g1,g2,saved_at} }
 var myPalpitesMM= {};     // { jogoId: {g1,g2,saved_at} }
-var cTab='grupos', cGrupo='TODOS', cDia='TODOS';
+var cTab='dias', cGrupo='TODOS', cDia='TODOS';
 var palpitesAbertos={};
 
 function simpleHash(str) {
