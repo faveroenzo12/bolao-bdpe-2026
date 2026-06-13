@@ -204,7 +204,7 @@ select option{background:#001d4a;color:#ffffff;}::-webkit-scrollbar-track{backgr
     <button class="nav-btn" onclick="goPage('matamata',this)">🏆 Mata-Mata</button>
     <button class="nav-btn" onclick="goPage('stats',this)">📊 Estatísticas</button>
     <button class="nav-btn" onclick="goPage('especiais',this)">⭐ Especiais</button>
-    <button class="nav-btn" onclick="goPage('adm',this)">🔐 ADM</button>
+    <button class="nav-btn" id="btnAdm" onclick="goPage('adm',this)" style="display:none">🔐 ADM</button>
   </div>
 </nav>
 
@@ -675,6 +675,7 @@ var allPalpitesMM = [];   // [{nick, jogo_id, g1, g2, saved_at}]
 var myPalpites  = {};     // { jogoId: {g1,g2,saved_at} }
 var myPalpitesMM= {};     // { jogoId: {g1,g2,saved_at} }
 var cTab='grupos', cGrupo='TODOS', cDia='TODOS';
+var palpitesAbertos={};
 
 function simpleHash(str) {
   var h = 5381;
@@ -993,7 +994,12 @@ function buildCard(j) {
     bottomHTML='<div class="locked-row">🔐 Entre para apostar</div>';
   } else if (locked) {
     var pl=pick?pick.g1+' x '+pick.g2:'—';
-    bottomHTML='<div class="locked-row">🔒 Encerrado · Palpite: <strong style="color:var(--white);margin-left:4px">'+pl+'</strong></div>';
+    var isOpen=!!palpitesAbertos[j.id];
+    bottomHTML='<div class="locked-row" style="justify-content:space-between;cursor:pointer;" id="chv_'+j.id+'" onclick="togglePalpitesJogo('+j.id+')">'
+      +'<span>🔒 Encerrado · Palpite: <strong style="color:var(--white);margin-left:4px">'+pl+'</strong></span>'
+      +'<span style="font-size:16px;transition:transform .25s;display:inline-block;transform:'+(isOpen?'rotate(180deg)':'rotate(0deg)')+'" id="arr_j_'+j.id+'">▼</span>'
+      +'</div>'
+      +'<div id="panel_'+j.id+'" style="display:'+(isOpen?'block':'none')+'"></div>';
   } else if (pick) {
     var t=new Date(pick.savedAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     bottomHTML='<div class="save-row"><div class="saved-row">✅ <span>'+pick.g1+' x '+pick.g2+'</span> <span style="color:var(--gray);font-weight:400;font-size:11px">· '+t+'</span></div>'
@@ -2320,8 +2326,71 @@ function showToast(type,msg){
   clearTimeout(toastTmr); toastTmr=setTimeout(function(){el.classList.remove('show');},3400);
 }
 
-// ── INIT ──
+function togglePalpitesJogo(jid) {
+  palpitesAbertos[jid] = !palpitesAbertos[jid];
+  var arr = document.getElementById('arr_j_'+jid);
+  var panel = document.getElementById('panel_'+jid);
+  if(!panel) return;
+  if(palpitesAbertos[jid]) {
+    if(arr) arr.style.transform='rotate(180deg)';
+    panel.style.display='block';
+    loadPalpitesJogo(jid, panel);
+  } else {
+    if(arr) arr.style.transform='rotate(0deg)';
+    panel.style.display='none';
+  }
+}
+
+async function loadPalpitesJogo(jid, panel) {
+  panel.innerHTML='<div style="padding:10px 15px;font-family:Barlow Condensed,sans-serif;font-size:12px;color:var(--gray);">Carregando palpites...</div>';
+  try {
+    var picks = await sbGet('palpites', 'select=nick,g1,g2&jogo_id=eq.'+jid+'&order=saved_at.asc');
+    var res = resultados[jid];
+    if(!picks.length) {
+      panel.innerHTML='<div style="padding:10px 15px;font-family:Barlow Condensed,sans-serif;font-size:12px;color:var(--gray);">Nenhum palpite registado.</div>';
+      return;
+    }
+    var rows='';
+    picks.forEach(function(p){
+      var ptsObj = res!=null ? calcPts(parseInt(p.g1),parseInt(p.g2),res.g1,res.g2,getZebraInfo(jid)) : null;
+      var ptStyle='';
+      if(ptsObj){
+        if(ptsObj.pts>=25)      ptStyle='color:#fbbf24;font-weight:700;';
+        else if(ptsObj.pts>=10) ptStyle='color:var(--green);font-weight:700;';
+        else if(ptsObj.pts>0)   ptStyle='color:var(--purple);font-weight:700;';
+        else                    ptStyle='color:var(--gray);';
+      }
+      var isMe = p.nick===currentNick;
+      rows+='<tr style="'+(isMe?'background:rgba(206,17,38,.08);':'')+'">'
+        +'<td style="padding:7px 15px;font-family:Barlow Condensed,sans-serif;font-size:13px;font-weight:'+(isMe?'700':'400')+';">'
+        +(isMe?'⚽ ':'')+p.nick+'</td>'
+        +'<td style="padding:7px 15px;font-family:Bebas Neue,sans-serif;font-size:16px;text-align:center;">'+p.g1+' x '+p.g2+'</td>'
+        +(ptsObj!=null
+          ?'<td style="padding:7px 15px;text-align:right;font-family:Bebas Neue,sans-serif;font-size:16px;"><span style="'+ptStyle+'">'+ptsObj.pts+'pts</span></td>'
+          :(res!=null?'<td style="padding:7px 15px;text-align:right;font-family:Barlow Condensed,sans-serif;font-size:11px;color:var(--gray);">—</td>':'<td style="padding:7px 15px;text-align:right;font-family:Barlow Condensed,sans-serif;font-size:11px;color:var(--gray);">aguard.</td>'))
+        +'</tr>';
+    });
+    var resLabel = res!=null
+      ? '<span style="color:var(--yellow);font-family:Bebas Neue,sans-serif;font-size:13px;">Resultado: '+res.g1+' x '+res.g2+'</span>'
+      : '<span style="color:var(--gray);font-family:Barlow Condensed,sans-serif;font-size:11px;">Aguardando resultado</span>';
+    panel.innerHTML='<div style="border-top:1px solid rgba(255,255,255,.06);">'
+      +'<div style="padding:6px 15px 4px;display:flex;align-items:center;justify-content:space-between;">'
+      +'<span style="font-family:Barlow Condensed,sans-serif;font-size:11px;color:var(--gray);letter-spacing:1px;">PALPITES ('+picks.length+')</span>'
+      +resLabel
+      +'</div>'
+      +'<table style="width:100%;border-collapse:collapse;">'+rows+'</table>'
+      +'</div>';
+  } catch(e) {
+    panel.innerHTML='<div style="padding:10px 15px;font-family:Barlow Condensed,sans-serif;font-size:12px;color:#ff8899;">Erro ao carregar palpites.</div>';
+  }
+}
+  // ── INIT ──
 async function init() {
+  // Mostrar botão ADM se URL tiver ?adm=1
+  if(new URLSearchParams(window.location.search).get('adm')==='1'){
+    var btnAdm=document.getElementById('btnAdm');
+    if(btnAdm) btnAdm.style.display='';
+  }
   // Restore session
   var savedNick=localStorage.getItem('bdpe_nick');
   var savedHash=localStorage.getItem('bdpe_hash');
