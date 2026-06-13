@@ -1038,22 +1038,27 @@ function onScoreChange(id) {
 }
 
 async function salvar(id) {
-  if (!currentNick) { showToast('err','🔐 Entre ou crie uma conta!'); return; }
-  if (isLocked(JOGOS[id])) { showToast('err','🔒 Prazo encerrado!'); return; }
-  var s1=document.getElementById('s1_'+id), s2=document.getElementById('s2_'+id);
-  if (!s1||s1.value===''||!s2||s2.value==='') { showToast('err','⚠️ Preencha o placar!'); return; }
-  var g1=parseInt(s1.value), g2=parseInt(s2.value);
-  try {
-    await sbUpsert('palpites', {nick:currentNick, jogo_id:id, g1:g1, g2:g2, saved_at:new Date().toISOString()});
-    myPalpites[id] = {g1:g1, g2:g2, savedAt:new Date().toISOString()};
-    var j=JOGOS[id];
-    var shareStr=buildShareStr(j,g1,g2,currentNick);
-    document.getElementById('shareTxt').textContent=shareStr;
-    document.getElementById('shareMsg').innerHTML='Palpite de <strong>'+currentNick+'</strong> salvo! 🇧🇿';
-    document.getElementById('shareModal').classList.add('open');
-    showToast('ok','✅ '+j.t1.n+' '+g1+'x'+g2+' '+j.t2.n);
-    render();
-  } catch(e) { showToast('err','Erro ao salvar: '+e.message); }
+if (!currentNick) { showToast('err','🔐 Entre ou crie uma conta!'); return; }
+var s1=document.getElementById('s1_'+id), s2=document.getElementById('s2_'+id);
+if (!s1||s1.value===''||!s2||s2.value==='') { showToast('err','⚠️ Preencha o placar!'); return; }
+var g1=parseInt(s1.value), g2=parseInt(s2.value);
+try {
+var r=await fetch(EDGE_BASE+'/save-pick',{
+method:'POST',
+headers:{'Content-Type':'application/json','apikey':SUPA_KEY},
+body:JSON.stringify({nick:currentNick,pwd_hash:currentHash,jogo_id:id,g1:g1,g2:g2})
+});
+var d=await r.json();
+if(!r.ok){showToast('err','🔒 '+(d.error||'Erro ao salvar'));return;}
+myPalpites[id] = {g1:g1, g2:g2, savedAt:new Date().toISOString()};
+var j=JOGOS[id];
+var shareStr=buildShareStr(j,g1,g2,currentNick);
+document.getElementById('shareTxt').textContent=shareStr;
+document.getElementById('shareMsg').innerHTML='Palpite de <strong>'+currentNick+'</strong> salvo! 🇧🇿';
+document.getElementById('shareModal').classList.add('open');
+showToast('ok','✅ '+j.t1.n+' '+g1+'x'+g2+' '+j.t2.n);
+render();
+} catch(e) { showToast('err','Erro ao salvar: '+e.message); }
 }
 
 async function editPick(id) {
@@ -1138,16 +1143,22 @@ function onMMScoreChange(id) {
 }
 
 async function salvarMM(id) {
-  if (!currentNick) { showToast('err','🔐 Entre primeiro!'); return; }
-  var s1=document.getElementById('mm_s1_'+id), s2=document.getElementById('mm_s2_'+id);
-  if (!s1||s1.value===''||!s2||s2.value==='') { showToast('err','⚠️ Preencha o placar!'); return; }
-  var g1=parseInt(s1.value), g2=parseInt(s2.value);
-  try {
-    await sbUpsert('palpites_mm', {nick:currentNick, jogo_id:id, g1:g1, g2:g2, saved_at:new Date().toISOString()});
-    myPalpitesMM[id]={g1:g1,g2:g2,savedAt:new Date().toISOString()};
-    showToast('ok','✅ Palpite do mata-mata salvo!');
-    renderMataMata();
-  } catch(e) { showToast('err','Erro: '+e.message); }
+if (!currentNick) { showToast('err','🔐 Entre primeiro!'); return; }
+var s1=document.getElementById('mm_s1_'+id), s2=document.getElementById('mm_s2_'+id);
+if (!s1||s1.value===''||!s2||s2.value==='') { showToast('err','⚠️ Preencha o placar!'); return; }
+var g1=parseInt(s1.value), g2=parseInt(s2.value);
+try {
+var r=await fetch(EDGE_BASE+'/save-pick-mm',{
+method:'POST',
+headers:{'Content-Type':'application/json','apikey':SUPA_KEY},
+body:JSON.stringify({nick:currentNick,pwd_hash:currentHash,jogo_id:id,g1:g1,g2:g2})
+});
+var d=await r.json();
+if(!r.ok){showToast('err','🔒 '+(d.error||'Erro ao salvar'));return;}
+myPalpitesMM[id]={g1:g1,g2:g2,savedAt:new Date().toISOString()};
+showToast('ok','✅ Palpite do mata-mata salvo!');
+renderMataMata();
+} catch(e) { showToast('err','Erro: '+e.message); }
 }
 
 async function editMMPick(id) {
@@ -1291,21 +1302,34 @@ async function renderTabela() {
 }
 
 // ── ADM ──
-var ADM_PWD='bdpe293306478';
-function admLogin(){
-  if(document.getElementById('admPwd').value===ADM_PWD){
-    document.getElementById('admLogin').style.display='none';
-    document.getElementById('admContent').classList.add('show');
-    renderAdm();
-  } else {
-    document.getElementById('admErr').style.display='block';
-    setTimeout(function(){document.getElementById('admErr').style.display='none';},2500);
-  }
+var EDGE_BASE='https://ijfhqgbpktynlbjwbarw.supabase.co/functions/v1'; var admToken=null;
+async function admLogin(){
+var pwd=document.getElementById('admPwd').value;
+if(!pwd){document.getElementById('admErr').style.display='block';return;}
+try {
+var r=await fetch(EDGE_BASE+'/adm-action',{
+method:'POST',
+headers:{'Content-Type':'application/json','apikey':SUPA_KEY},
+body:JSON.stringify({adm_pwd:pwd,action:'save_resultado',jogo_id:-999,g1:0,g2:0})
+});
+if(r.status===401){
+document.getElementById('admErr').style.display='block';
+setTimeout(function(){document.getElementById('admErr').style.display='none';},2500);
+return;
+}
+admToken=pwd;
+document.getElementById('admLogin').style.display='none';
+document.getElementById('admContent').classList.add('show');
+renderAdm();
+} catch(e){
+document.getElementById('admErr').style.display='block';
+}
 }
 function admLogout(){
-  document.getElementById('admLogin').style.display='';
-  document.getElementById('admContent').classList.remove('show');
-  document.getElementById('admPwd').value='';
+admToken=null;
+document.getElementById('admLogin').style.display='';
+document.getElementById('admContent').classList.remove('show');
+document.getElementById('admPwd').value='';
 }
 async function renderAdm() {
   await Promise.all([loadAll(), loadAdmData()]);
@@ -1367,34 +1391,17 @@ function renderAdmParticipantes() {
 }
 
 async function admDeleteUser(nick) {
-  if (!confirm('Remover '+nick+' e todos os palpites?')) return;
-  try {
-    // 1. Delete palpites first (cascade should handle this but belt+suspenders)
-    var r1 = await fetch(SUPA_URL+'/rest/v1/palpites?nick=eq.'+encodeURIComponent(nick), {
-      method:'DELETE', headers: sbHeaders()
-    });
-    var r2 = await fetch(SUPA_URL+'/rest/v1/palpites_mm?nick=eq.'+encodeURIComponent(nick), {
-      method:'DELETE', headers: sbHeaders()
-    });
-    // 2. Delete user
-    var r3 = await fetch(SUPA_URL+'/rest/v1/usuarios?nick=eq.'+encodeURIComponent(nick), {
-      method:'DELETE', headers: sbHeaders()
-    });
-    // Check each response
-    if (!r1.ok) { var t=await r1.text(); throw new Error('palpites: '+t); }
-    if (!r2.ok) { var t=await r2.text(); throw new Error('palpites_mm: '+t); }
-    if (!r3.ok) { var t=await r3.text(); throw new Error('usuarios: '+t); }
-    // Verify user was actually deleted
-    var check = await sbGet('usuarios','select=nick&nick=eq.'+encodeURIComponent(nick)+'&limit=1');
-    if (check.length > 0) {
-      throw new Error('RLS bloqueou a deleção. Rode o SQL de permissão no Supabase.');
-    }
-    showToast('ok','🗑️ Conta de '+nick+' removida com sucesso.');
-    await loadAdmData();
-    renderAdmParticipantes();
-    renderAdmPalpites();
-    await renderTabela();
-  } catch(e) { showToast('err', e.message); console.error('admDeleteUser error:', e); }
+if (!confirm('Remover '+nick+' e todos os palpites?')) return;
+try {
+var r=await fetch(EDGE_BASE+'/adm-action',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_KEY},body:JSON.stringify({adm_pwd:admToken,action:'delete_user',nick:nick})});
+var d=await r.json();
+if(!r.ok){showToast('err',d.error||'Erro ao deletar');return;}
+showToast('ok','🗑️ Conta de '+nick+' removida com sucesso.');
+await loadAdmData();
+renderAdmParticipantes();
+renderAdmPalpites();
+await renderTabela();
+} catch(e) { showToast('err', e.message); }
 }
 
 function renderAdmMataMata() {
@@ -1444,28 +1451,32 @@ function renderAdmMataMata() {
 }
 
 async function toggleMMUnlock(fid) {
-  var newVal=!mmUnlock[fid];
-  try {
-    await sbUpsert('mm_unlock',{fase_id:fid,unlocked:newVal,updated_at:new Date().toISOString()});
-    mmUnlock[fid]=newVal;
-    renderAdmMataMata(); renderMataMata();
-    showToast('info', newVal?'🔓 '+fid+' liberado!':'🔒 '+fid+' bloqueado.');
-  } catch(e){ showToast('err','Erro: '+e.message); }
+var newVal=!mmUnlock[fid];
+try {
+var r=await fetch(EDGE_BASE+'/adm-action',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_KEY},body:JSON.stringify({adm_pwd:admToken,action:'toggle_mm_unlock',fase_id:fid,unlocked:newVal})});
+var d=await r.json();
+if(!r.ok){showToast('err',d.error||'Erro');return;}
+mmUnlock[fid]=newVal;
+renderAdmMataMata(); renderMataMata();
+showToast('info', newVal?'🔓 '+fid+' liberado!':'🔒 '+fid+' bloqueado.');
+} catch(e){ showToast('err','Erro: '+e.message); }
 }
 
 async function saveMMResult(id) {
-  var t1=document.getElementById('mm_t1_'+id).value.trim();
-  var t2=document.getElementById('mm_t2_'+id).value.trim();
-  var g1=document.getElementById('mm_r1_'+id).value;
-  var g2=document.getElementById('mm_r2_'+id).value;
-  if(!t1||!t2){showToast('err','Preencha os nomes!');return;}
-  if(g1===''||g2===''){showToast('err','Preencha o placar!');return;}
-  try {
-    await sbUpsert('resultados_mm',{jogo_id:id,t1:t1,t2:t2,c1:'',c2:'',g1:parseInt(g1),g2:parseInt(g2),updated_at:new Date().toISOString()});
-    mmResults[id]={t1:t1,t2:t2,g1:parseInt(g1),g2:parseInt(g2)};
-    renderAdmMataMata(); renderMataMata(); renderTabela();
-    showToast('ok','✅ '+t1+' '+g1+'x'+g2+' '+t2);
-  } catch(e){ showToast('err','Erro: '+e.message); }
+var t1=document.getElementById('mm_t1_'+id).value.trim();
+var t2=document.getElementById('mm_t2_'+id).value.trim();
+var g1=document.getElementById('mm_r1_'+id).value;
+var g2=document.getElementById('mm_r2_'+id).value;
+if(!t1||!t2){showToast('err','Preencha os nomes!');return;}
+if(g1===''||g2===''){showToast('err','Preencha o placar!');return;}
+try {
+var r=await fetch(EDGE_BASE+'/adm-action',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_KEY},body:JSON.stringify({adm_pwd:admToken,action:'save_resultado_mm',jogo_id:id,t1:t1,t2:t2,c1:'',c2:'',g1:parseInt(g1),g2:parseInt(g2)})});
+var d=await r.json();
+if(!r.ok){showToast('err',d.error||'Erro');return;}
+mmResults[id]={t1:t1,t2:t2,g1:parseInt(g1),g2:parseInt(g2)};
+renderAdmMataMata(); renderMataMata(); renderTabela();
+showToast('ok','✅ '+t1+' '+g1+'x'+g2+' '+t2);
+} catch(e){ showToast('err','Erro: '+e.message); }
 }
 
 function renderAdmZebras() {
@@ -1534,22 +1545,19 @@ function renderAdmZebras() {
   // Attach click handlers
   JOGOS.forEach(function(j){
     // Helper to save zebra
-    function saveZebra(nivel, teamName) {
-      return async function(){
-        try {
-          if(nivel===0){
-            await sbDelete('zebras','jogo_id=eq.'+j.id);
-            delete zebras[j.id];
-          } else {
-            await sbUpsert('zebras',{jogo_id:j.id,nivel:nivel,time_zebra:teamName});
-            zebras[j.id]={nivel:nivel,time:teamName};
-          }
-          renderAdmZebras();
-          render();
-          showToast('ok', nivel===0?'Zebra removida':nivel===1?'🦓 Zebrinha: '+teamName:'🦓🦓 Zebrona: '+teamName);
-        } catch(e){ showToast('err','Erro: '+e.message); }
-      };
-    }
+   function saveZebra(nivel, teamName) {
+return async function(){
+try {
+var r=await fetch(EDGE_BASE+'/adm-action',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_KEY},body:JSON.stringify({adm_pwd:admToken,action:'save_zebra',jogo_id:j.id,nivel:nivel,time_zebra:teamName})});
+var d=await r.json();
+if(!r.ok){showToast('err',d.error||'Erro');return;}
+if(nivel===0){ delete zebras[j.id]; } else { zebras[j.id]={nivel:nivel,time:teamName}; }
+renderAdmZebras();
+render();
+showToast('ok', nivel===0?'Zebra removida':nivel===1?'🦓 Zebrinha: '+teamName:'🦓🦓 Zebrona: '+teamName);
+} catch(e){ showToast('err','Erro: '+e.message); }
+};
+}
     var bn  = document.getElementById('zbn_'+j.id);
     var bt1z = document.getElementById('zbt1z_'+j.id);
     var bt1Z = document.getElementById('zbt1Z_'+j.id);
@@ -1594,14 +1602,16 @@ function renderAdmResultados() {
 
 
 async function saveResult(id) {
-  var g1=document.getElementById('r1_'+id).value, g2=document.getElementById('r2_'+id).value;
-  if(g1===''||g2===''){showToast('err','Preencha os dois placares!');return;}
-  try {
-    await sbUpsert('resultados',{jogo_id:id,g1:parseInt(g1),g2:parseInt(g2),updated_at:new Date().toISOString()});
-    resultados[id]={g1:parseInt(g1),g2:parseInt(g2)};
-    renderAdmResultados(); renderTabela();
-    showToast('ok','✅ '+JOGOS[id].t1.n+' '+g1+'x'+g2+' '+JOGOS[id].t2.n);
-  } catch(e){ showToast('err','Erro: '+e.message); }
+var g1=document.getElementById('r1_'+id).value, g2=document.getElementById('r2_'+id).value;
+if(g1===''||g2===''){showToast('err','Preencha os dois placares!');return;}
+try {
+var r=await fetch(EDGE_BASE+'/adm-action',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_KEY},body:JSON.stringify({adm_pwd:admToken,action:'save_resultado',jogo_id:id,g1:parseInt(g1),g2:parseInt(g2)})});
+var d=await r.json();
+if(!r.ok){showToast('err',d.error||'Erro');return;}
+resultados[id]={g1:parseInt(g1),g2:parseInt(g2)};
+renderAdmResultados(); renderTabela();
+showToast('ok','✅ '+JOGOS[id].t1.n+' '+g1+'x'+g2+' '+JOGOS[id].t2.n);
+} catch(e){ showToast('err','Erro: '+e.message); }
 }
 
 function renderAdmPalpites() {
@@ -1924,30 +1934,33 @@ async function renderEspeciais() {
 }
 
 async function salvarEspecial(tipo1, tipo2) {
-  if(!currentNick){showToast('err','🔐 Entre primeiro!');return;}
-  if(especiaisLocked()){showToast('err','🔒 Prazo encerrado!');return;}
-  try {
-    if(tipo2){
-      // Save final (two selects)
-      var v1=document.getElementById('esp_'+tipo1).value;
-      var v2=document.getElementById('esp_'+tipo2).value;
-      if(!v1||!v2){showToast('err','Escolha os dois finalistas!');return;}
-      if(v1===v2){showToast('err','Os dois finalistas não podem ser o mesmo time!');return;}
-      await sbUpsert('especiais_picks',{nick:currentNick,tipo:tipo1,valor:v1,saved_at:new Date().toISOString()});
-      await sbUpsert('especiais_picks',{nick:currentNick,tipo:tipo2,valor:v2,saved_at:new Date().toISOString()});
-      especiaisPicks[tipo1]={valor:v1,savedAt:new Date().toISOString()};
-      especiaisPicks[tipo2]={valor:v2,savedAt:new Date().toISOString()};
-      showToast('ok','✅ Final salva: '+v1+' x '+v2);
-    } else {
-      var el=document.getElementById('esp_'+tipo1);
-      var v=el.value.trim?el.value.trim():el.value;
-      if(!v){showToast('err','Preencha o campo!');return;}
-      await sbUpsert('especiais_picks',{nick:currentNick,tipo:tipo1,valor:v,saved_at:new Date().toISOString()});
-      especiaisPicks[tipo1]={valor:v,savedAt:new Date().toISOString()};
-      showToast('ok','✅ Aposta salva!');
-    }
-    renderEspeciais();
-  } catch(e){showToast('err','Erro: '+e.message);}
+if(!currentNick){showToast('err','🔐 Entre primeiro!');return;}
+try {
+if(tipo2){
+var v1=document.getElementById('esp_'+tipo1).value;
+var v2=document.getElementById('esp_'+tipo2).value;
+if(!v1||!v2){showToast('err','Escolha os dois finalistas!');return;}
+if(v1===v2){showToast('err','Os dois finalistas não podem ser o mesmo time!');return;}
+var r1=await fetch(EDGE_BASE+'/save-especial',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_KEY},body:JSON.stringify({nick:currentNick,pwd_hash:currentHash,tipo:tipo1,valor:v1})});
+var r2=await fetch(EDGE_BASE+'/save-especial',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_KEY},body:JSON.stringify({nick:currentNick,pwd_hash:currentHash,tipo:tipo2,valor:v2})});
+var d1=await r1.json(); var d2=await r2.json();
+if(!r1.ok){showToast('err','🔒 '+(d1.error||'Erro'));return;}
+if(!r2.ok){showToast('err','🔒 '+(d2.error||'Erro'));return;}
+especiaisPicks[tipo1]={valor:v1,savedAt:new Date().toISOString()};
+especiaisPicks[tipo2]={valor:v2,savedAt:new Date().toISOString()};
+showToast('ok','✅ Final salva: '+v1+' x '+v2);
+} else {
+var el=document.getElementById('esp_'+tipo1);
+var v=el.value.trim?el.value.trim():el.value;
+if(!v){showToast('err','Preencha o campo!');return;}
+var r=await fetch(EDGE_BASE+'/save-especial',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_KEY},body:JSON.stringify({nick:currentNick,pwd_hash:currentHash,tipo:tipo1,valor:v})});
+var d=await r.json();
+if(!r.ok){showToast('err','🔒 '+(d.error||'Erro'));return;}
+especiaisPicks[tipo1]={valor:v,savedAt:new Date().toISOString()};
+showToast('ok','✅ Aposta salva!');
+}
+renderEspeciais();
+} catch(e){showToast('err','Erro: '+e.message);}
 }
 
 // ── ADM especiais ──
@@ -2015,16 +2028,18 @@ async function renderAdmEspeciais() {
   especiaisADM.forEach(function(esp){
     var btn=document.getElementById('abtn_'+esp.id); if(!btn) return;
     (function(eid){btn.onclick=async function(){
-      var el2=document.getElementById('ares_'+eid);
-      var v=el2.value.trim?el2.value.trim():el2.value;
-      if(!v){showToast('err','Preencha o resultado!');return;}
-      try {
-        await sbUpsert('especiais_resultados',{tipo:eid,valor:v,updated_at:new Date().toISOString()});
-        especiaisResultados[eid]={valor:v};
-        renderAdmEspeciais();
-        showToast('ok','✅ Resultado especial salvo!');
-      } catch(e){showToast('err','Erro: '+e.message);}
-    };})(esp.id);
+var el2=document.getElementById('ares_'+eid);
+var v=el2.value.trim?el2.value.trim():el2.value;
+if(!v){showToast('err','Preencha o resultado!');return;}
+try {
+var r=await fetch(EDGE_BASE+'/adm-action',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_KEY},body:JSON.stringify({adm_pwd:admToken,action:'save_especial_resultado',tipo:eid,valor:v})});
+var d=await r.json();
+if(!r.ok){showToast('err',d.error||'Erro');return;}
+especiaisResultados[eid]={valor:v};
+renderAdmEspeciais();
+showToast('ok','✅ Resultado especial salvo!');
+} catch(e){showToast('err','Erro: '+e.message);}
+};})(esp.id);
   });
 }
 
