@@ -1037,7 +1037,19 @@ function buildCard(j) {
   } else if (locked) {
     var pl=pick?pick.g1+' x '+pick.g2:'—';
     var isOpen=!!palpitesAbertos[j.id];
-    bottomHTML='<div class="locked-row" style="justify-content:space-between;cursor:pointer;" id="chv_'+j.id+'" onclick="togglePalpitesJogo('+j.id+')">'
+    var res=resultados[j.id];
+    var resBar='';
+    if(res!=null){
+      var ptsObj=pick?calcPts(pick.g1,pick.g2,res.g1,res.g2,getZebraInfo(j.id)):null;
+      var ptsTag=ptsObj?(' · <span style="font-family:Bebas Neue,sans-serif;font-size:15px;color:'+(ptsObj.pts>=25?'#fbbf24':ptsObj.pts>=10?'var(--green)':ptsObj.pts>0?'var(--purple)':'var(--gray)')+';">'+ptsObj.pts+'pts</span>'):'';
+      resBar='<div style="padding:7px 15px;background:rgba(255,255,255,.04);border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;gap:8px;font-family:Barlow Condensed,sans-serif;font-size:13px;">'
+        +'<span style="color:var(--gray);">Resultado:</span>'
+        +'<strong style="color:var(--white);font-family:Bebas Neue,sans-serif;font-size:16px;">'+j.t1.n+' '+res.g1+' x '+res.g2+' '+j.t2.n+'</strong>'
+        +ptsTag
+        +'</div>';
+    }
+    bottomHTML=resBar
+      +'<div class="locked-row" style="justify-content:space-between;cursor:pointer;" id="chv_'+j.id+'" onclick="togglePalpitesJogo('+j.id+')">'
       +'<span>🔒 Encerrado · Palpite: <strong style="color:var(--white);margin-left:4px">'+pl+'</strong></span>'
       +'<span style="font-size:16px;transition:transform .25s;display:inline-block;transform:'+(isOpen?'rotate(180deg)':'rotate(0deg)')+'" id="arr_j_'+j.id+'">▼</span>'
       +'</div>'
