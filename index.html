@@ -1049,10 +1049,12 @@ function renderProgress() {
 function render() { renderStats(); renderProgress(); renderJogosHoje(); _renderMatches(); }
 
 function renderJogosHoje() {
-  var hoje = new Date().toISOString().slice(0,10); // YYYY-MM-DD
-  var jogosHoje = JOGOS.filter(function(j){ return diaExibicao(j) === hoje; });
   var el = document.getElementById('jogosHoje');
   if(!el) return;
+  // Só mostrar quando filtro é HOJE
+  if(cDia !== 'HOJE') { el.innerHTML=''; return; }
+  var hoje = new Date().toISOString().slice(0,10);
+  var jogosHoje = JOGOS.filter(function(j){ return diaExibicao(j) === hoje; });
   if(!jogosHoje.length){ el.innerHTML=''; return; }
   var html='<div class="section-hdr" style="margin-top:0;">'
     +'<div class="section-badge" style="background:linear-gradient(135deg,#7c3aed,#5b21b6);font-size:16px;">🗓️ JOGOS DO DIA</div>'
@@ -1070,9 +1072,9 @@ function renderJogosHoje() {
     renderGrouped(el, jogos, 'grupo');
   } else {
     if (cDia==='HOJE') {
-      // Mostrar jogos do dia de exibição de hoje
-      var hojeISO = new Date().toISOString().slice(0,10);
-      jogos=jogos.filter(function(j){ return diaExibicao(j)===hojeISO; });
+      el.innerHTML='';
+      return;
+    }
     } else if (cDia!=='TODOS') {
       jogos=jogos.filter(function(j){ return diaExibicaoLabel(j)===cDia; });
     }
