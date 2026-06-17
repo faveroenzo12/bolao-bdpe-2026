@@ -1083,8 +1083,17 @@ function buildCard(j) {
         +ptsTag
         +'</div>';
     }
-    bottomHTML=resBar
-      +'<div class="locked-row" style="justify-content:space-between;cursor:pointer;" id="chv_'+j.id+'" onclick="togglePalpitesJogo('+j.id+')">'
+    var semChevron=[19];
+    if(semChevron.indexOf(j.id)!==-1){
+      bottomHTML=resBar+'<div class="locked-row">🔒 Encerrado · Palpite: <strong style="color:var(--white);margin-left:4px">'+pl+'</strong></div>';
+    } else {
+      bottomHTML=resBar
+        +'<div class="locked-row" style="justify-content:space-between;cursor:pointer;" id="chv_'+j.id+'" onclick="togglePalpitesJogo('+j.id+')">'
+        +'<span>🔒 Encerrado · Palpite: <strong style="color:var(--white);margin-left:4px">'+pl+'</strong></span>'
+        +'<span style="font-size:16px;transition:transform .25s;display:inline-block;transform:'+(isOpen?'rotate(180deg)':'rotate(0deg)')+'" id="arr_j_'+j.id+'">▼</span>'
+        +'</div>'
+        +'<div id="panel_'+j.id+'" style="display:'+(isOpen?'block':'none')+'"></div>';
+    }
       +'<span>🔒 Encerrado · Palpite: <strong style="color:var(--white);margin-left:4px">'+pl+'</strong></span>'
       +'<span style="font-size:16px;transition:transform .25s;display:inline-block;transform:'+(isOpen?'rotate(180deg)':'rotate(0deg)')+'" id="arr_j_'+j.id+'">▼</span>'
       +'</div>'
