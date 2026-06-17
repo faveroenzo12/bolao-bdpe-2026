@@ -728,7 +728,7 @@ var allPalpites = [];     // [{nick, jogo_id, g1, g2, saved_at}]
 var allPalpitesMM = [];   // [{nick, jogo_id, g1, g2, saved_at}]
 var myPalpites  = {};     // { jogoId: {g1,g2,saved_at} }
 var myPalpitesMM= {};     // { jogoId: {g1,g2,saved_at} }
-var cTab='dias', cGrupo='TODOS', cDia='TODOS';
+var cTab='dias', cGrupo='TODOS', cDia='HOJE';
 var palpitesAbertos={};
 
 function simpleHash(str) {
@@ -923,21 +923,60 @@ function setFilter(type, val, btn) {
   btn.classList.add('active');
   render();
 }
+function diaExibicao(j) {
+  // Jogos entre 00:00 e 02:59 pertencem ao dia anterior
+  var h = parseInt(j.hora.split(':')[0]);
+  if (h < 3) {
+    var d = new Date(j.dataISO + 'T12:00:00');
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().slice(0,10); // YYYY-MM-DD do dia anterior
+  }
+  return j.dataISO;
+}
+
+function diaExibicaoLabel(j) {
+  // Retorna o label "DD/MM" do dia de exibição
+  var iso = diaExibicao(j);
+  var parts = iso.split('-');
+  return parts[2]+'/'+parts[1];
+}
+
 function buildDiaFilters() {
-  var dias = [];
-  JOGOS.forEach(function(j){ if (dias.indexOf(j.data)===-1) dias.push(j.data); });
+  var diasMap = {}; // { 'DD/MM': 'YYYY-MM-DD' }
+  JOGOS.forEach(function(j){
+    var label = diaExibicaoLabel(j);
+    if(!diasMap[label]) diasMap[label] = diaExibicao(j);
+  });
+  // Ordenar por data
+  var diasArr = Object.keys(diasMap).sort(function(a,b){
+    return diasMap[a] > diasMap[b] ? 1 : -1;
+  });
+
   var row = document.getElementById('fDias');
   row.innerHTML = '';
-  var btnTodos = document.createElement('button');
-  btnTodos.className='filter-btn active'; btnTodos.textContent='Todos';
-  btnTodos.onclick = function(){ setFilter('dia','TODOS',this); };
-  row.appendChild(btnTodos);
-  dias.forEach(function(d){
+
+  // Botão JOGOS DO DIA
+  var btnHoje = document.createElement('button');
+  btnHoje.className='filter-btn active'; btnHoje.textContent='🗓️ Jogos do Dia';
+  btnHoje.style.cssText='background:linear-gradient(135deg,#7c3aed,#5b21b6);border-color:#7c3aed;color:white;';
+  btnHoje.onclick = function(){ setFilter('dia','HOJE',this); };
+  row.appendChild(btnHoje);
+
+  // Botões por dia
+  diasArr.forEach(function(label){
     var b = document.createElement('button');
-    b.className='filter-btn'; b.textContent=d.split(' ')[0]; b.title=d;
-    b.onclick = function(){ setFilter('dia',d,this); };
+    b.className='filter-btn'; b.textContent=label;
+    b.onclick = function(){ setFilter('dia',label,this); };
     row.appendChild(b);
   });
+
+  // Botão TODOS OS JOGOS
+  var btnTodos = document.createElement('button');
+  btnTodos.className='filter-btn';
+  btnTodos.textContent='🏆 Todos os Jogos';
+  btnTodos.style.cssText='background:linear-gradient(135deg,#b45309,#92400e);border-color:#b45309;color:white;';
+  btnTodos.onclick = function(){ setFilter('dia','TODOS',this); };
+  row.appendChild(btnTodos);
 }
 
 // ── DEADLINE ──
@@ -1011,7 +1050,7 @@ function render() { renderStats(); renderProgress(); renderJogosHoje(); _renderM
 
 function renderJogosHoje() {
   var hoje = new Date().toISOString().slice(0,10); // YYYY-MM-DD
-  var jogosHoje = JOGOS.filter(function(j){ return j.dataISO === hoje; });
+  var jogosHoje = JOGOS.filter(function(j){ return diaExibicao(j) === hoje; });
   var el = document.getElementById('jogosHoje');
   if(!el) return;
   if(!jogosHoje.length){ el.innerHTML=''; return; }
@@ -1030,7 +1069,13 @@ function renderJogosHoje() {
     if (cGrupo!=='TODOS') jogos=jogos.filter(function(j){ return j.grupo===cGrupo; });
     renderGrouped(el, jogos, 'grupo');
   } else {
-    if (cDia!=='TODOS') jogos=jogos.filter(function(j){ return j.data===cDia; });
+    if (cDia==='HOJE') {
+      // Mostrar jogos do dia de exibição de hoje
+      var hojeISO = new Date().toISOString().slice(0,10);
+      jogos=jogos.filter(function(j){ return diaExibicao(j)===hojeISO; });
+    } else if (cDia!=='TODOS') {
+      jogos=jogos.filter(function(j){ return diaExibicaoLabel(j)===cDia; });
+    }
     renderGrouped(el, jogos, 'dia');
   }
 }
