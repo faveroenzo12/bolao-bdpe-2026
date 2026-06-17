@@ -1064,7 +1064,7 @@ function renderJogosHoje() {
   jogosHoje.forEach(function(j){ html+=buildCard(j); });
   el.innerHTML=html;
 }
-  function _renderMatches() {
+function _renderMatches() {
   var el = document.getElementById('matchList');
   var jogos = JOGOS.slice();
   if (cTab==='grupos') {
@@ -1074,7 +1074,6 @@ function renderJogosHoje() {
     if (cDia==='HOJE') {
       el.innerHTML='';
       return;
-    }
     } else if (cDia!=='TODOS') {
       jogos=jogos.filter(function(j){ return diaExibicaoLabel(j)===cDia; });
     }
