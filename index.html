@@ -298,6 +298,7 @@ select option{background:#001d4a;color:#ffffff;}::-webkit-scrollbar-track{backgr
     <button class="filter-btn" onclick="setFilter('grupo','L',this)">L</button>
   </div>
   <div class="filter-row" id="fDias"></div>
+  <div id="jogosHoje"></div>
   <div id="matchList"></div>
 </div>
 
@@ -1006,9 +1007,23 @@ function renderProgress() {
 }
 
 // ── RENDER GROUPS ──
-function render() { renderStats(); renderProgress(); _renderMatches(); }
+function render() { renderStats(); renderProgress(); renderJogosHoje(); _renderMatches(); }
 
-function _renderMatches() {
+function renderJogosHoje() {
+  var hoje = new Date().toISOString().slice(0,10); // YYYY-MM-DD
+  var jogosHoje = JOGOS.filter(function(j){ return j.dataISO === hoje; });
+  var el = document.getElementById('jogosHoje');
+  if(!el) return;
+  if(!jogosHoje.length){ el.innerHTML=''; return; }
+  var html='<div class="section-hdr" style="margin-top:0;">'
+    +'<div class="section-badge" style="background:linear-gradient(135deg,#7c3aed,#5b21b6);font-size:16px;">🗓️ JOGOS DO DIA</div>'
+    +'<div class="section-line"></div>'
+    +'<div class="section-sub">'+jogosHoje.length+' jogo'+(jogosHoje.length>1?'s':'')+'</div>'
+    +'</div>';
+  jogosHoje.forEach(function(j){ html+=buildCard(j); });
+  el.innerHTML=html;
+}
+  function _renderMatches() {
   var el = document.getElementById('matchList');
   var jogos = JOGOS.slice();
   if (cTab==='grupos') {
