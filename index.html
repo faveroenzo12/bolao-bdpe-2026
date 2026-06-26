@@ -787,7 +787,7 @@ async function loadAdmData() {
   try {
     var [u, p, pm, ep] = await Promise.all([
       sbGet('usuarios', 'select=nick,pwd_hash,created_at,apostado&order=created_at.asc'),
-      sbGet('palpites', 'select=nick,jogo_id,g1,g2,saved_at'),
+      sbGet('palpites', 'select=nick,jogo_id,g1,g2,saved_at&limit=10000'),
       sbGet('palpites_mm', 'select=nick,jogo_id,g1,g2,saved_at'),
       sbGet('especiais_picks', 'select=nick,tipo,valor,valor2,saved_at')
     ]);
