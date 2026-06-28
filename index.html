@@ -347,6 +347,38 @@ select option{background:#001d4a;color:#ffffff;}::-webkit-scrollbar-track{backgr
   <!-- PAGE: PONTUACAO -->
 <div class="page" id="page-pontuacao">
   <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;margin-bottom:20px;">📋 Sistema de Pontuação</div>
+
+  <!-- MATA-MATA -->
+  <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;margin-bottom:12px;color:var(--purple);">⚡ Mata-Mata</div>
+
+  <div class="card" style="margin-bottom:12px;">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;color:var(--gray);margin-bottom:16px;line-height:1.6;">
+      Jogo <strong style="color:var(--white)">decidido sem empate</strong> (tempo normal ou prorrogação):
+    </div>
+    <div class="pts-row"><div><div class="pts-label">🎯 Placar exato<div class="pts-example">Chutou 2x1 → Saiu 2x1</div></div></div><div><div class="pts-val">25</div></div></div>
+    <div class="pts-row"><div><div class="pts-label">🥇 Vencedor + gols do vencedor<div class="pts-example">Chutou 2x0 → Saiu 2x1 (vencedor fez 2 nos dois)</div></div></div><div><div class="pts-val">15</div></div></div>
+    <div class="pts-row"><div><div class="pts-label">🏆 Vencedor + gols do perdedor<div class="pts-example">Chutou 2x1 → Saiu 3x1 (perdedor fez 1 nos dois)</div></div></div><div><div class="pts-val">12</div></div></div>
+    <div class="pts-row"><div><div class="pts-label">🏆 Vencedor + saldo de gols<div class="pts-example">Chutou 3x1 → Saiu 2x0 (saldo +2 nos dois)</div></div></div><div><div class="pts-val">12</div></div></div>
+    <div class="pts-row"><div><div class="pts-label">✅ Vencedor certo<div class="pts-example">Chutou 3x0 → Saiu 1x0</div></div></div><div><div class="pts-val">10</div></div></div>
+    <div class="pts-row"><div><div class="pts-label">✅ Apostou empate + acertou quem passaria<div class="pts-example">Chutou 1x1 + Brasil → Saiu 2x1 Brasil</div></div></div><div><div class="pts-val">10</div></div></div>
+    <div class="pts-row"><div><div class="pts-label">❌ Errou<div class="pts-example">Nenhum critério atingido</div></div></div><div><div class="pts-val" style="color:var(--gray)">0</div></div></div>
+  </div>
+
+  <div class="card" style="margin-bottom:12px;">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;color:var(--gray);margin-bottom:16px;line-height:1.6;">
+      Jogo que <strong style="color:var(--white)">terminou empatado</strong> (vai para pênaltis):
+    </div>
+    <div class="pts-row"><div><div class="pts-label">🎯 Placar exato do empate + acertou quem passa<div class="pts-example">Chutou 1x1 + Brasil → Saiu 1x1, Brasil passou</div></div></div><div><div class="pts-val" style="color:var(--yellow)">35</div></div></div>
+    <div class="pts-row"><div><div class="pts-label">🎯 Placar exato do empate + errou quem passa<div class="pts-example">Chutou 1x1 + Argentina → Saiu 1x1, Brasil passou</div></div></div><div><div class="pts-val">20</div></div></div>
+    <div class="pts-row"><div><div class="pts-label">🤝 Empate correto (placar diferente) + acertou quem passa<div class="pts-example">Chutou 2x2 + Brasil → Saiu 1x1, Brasil passou</div></div></div><div><div class="pts-val">25</div></div></div>
+    <div class="pts-row"><div><div class="pts-label">🤝 Empate correto (placar diferente) + errou quem passa<div class="pts-example">Chutou 2x2 + Argentina → Saiu 1x1, Brasil passou</div></div></div><div><div class="pts-val">10</div></div></div>
+    <div class="pts-row"><div><div class="pts-label">✅ Apostou não-empate + acertou quem passa<div class="pts-example">Chutou 2x1 Brasil → Saiu 1x1, Brasil passou</div></div></div><div><div class="pts-val">10</div></div></div>
+    <div class="pts-row"><div><div class="pts-label">❌ Errou<div class="pts-example">Nenhum critério atingido</div></div></div><div><div class="pts-val" style="color:var(--gray)">0</div></div></div>
+  </div>
+
+  <!-- FASE DE GRUPOS -->
+  <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;margin:20px 0 12px;color:var(--blue-light);">⚽ Fase de Grupos</div>
+
   <div class="card">
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;color:var(--gray);margin-bottom:16px;line-height:1.6;">
       Cada jogo vale um palpite de placar (ex: <strong style="color:var(--white)">2 x 1</strong>). Apenas a categoria mais alta atingida conta — os critérios são <strong style="color:var(--white)">independentes</strong> e não se acumulam.
@@ -376,33 +408,6 @@ select option{background:#001d4a;color:#ffffff;}::-webkit-scrollbar-track{backgr
   </div>
 
   <div class="card" style="padding:20px;margin-top:12px;">
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;margin-bottom:14px;">📌 Exemplos práticos</div>
-    <div style="display:flex;flex-direction:column;gap:10px;font-family:Barlow Condensed,sans-serif;font-size:13px;">
-      <div style="padding:10px 14px;background:rgba(251,191,36,.08);border-radius:8px;border-left:3px solid var(--yellow);">
-        <strong style="color:var(--yellow)">25pts</strong> — Chutou <strong>2×1</strong> → Saiu <strong>2×1</strong> · Placar exato
-      </div>
-      <div style="padding:10px 14px;background:rgba(34,197,94,.08);border-radius:8px;border-left:3px solid var(--green);">
-        <strong style="color:var(--green)">15pts</strong> — Chutou <strong>2×3</strong> → Saiu <strong>1×3</strong> · t2 ganhou nos dois e fez 3 em ambos
-      </div>
-      <div style="padding:10px 14px;background:rgba(34,197,94,.08);border-radius:8px;border-left:3px solid var(--green);">
-        <strong style="color:var(--green)">12pts</strong> — Chutou <strong>3×1</strong> → Saiu <strong>2×0</strong> · t1 ganhou nos dois, saldo +2 em ambos
-      </div>
-      <div style="padding:10px 14px;background:rgba(59,130,246,.08);border-radius:8px;border-left:3px solid var(--blue-light);">
-        <strong style="color:var(--blue-light)">10pts</strong> — Chutou <strong>3×0</strong> → Saiu <strong>1×0</strong> · Acertou o vencedor
-      </div>
-      <div style="padding:10px 14px;background:rgba(59,130,246,.08);border-radius:8px;border-left:3px solid var(--blue-light);">
-        <strong style="color:var(--blue-light)">10pts</strong> — Chutou <strong>1×1</strong> → Saiu <strong>0×0</strong> · Acertou o empate
-      </div>
-      <div style="padding:10px 14px;background:rgba(255,255,255,.05);border-radius:8px;border-left:3px solid rgba(255,255,255,.2);">
-        <strong style="color:rgba(255,255,255,.7)">3pts</strong> — Chutou <strong>3×1</strong> → Saiu <strong>3×5</strong> · t1 fez 3 nos dois, mas t2 ganhou
-      </div>
-      <div style="padding:10px 14px;background:rgba(255,255,255,.05);border-radius:8px;border-left:3px solid rgba(255,255,255,.2);">
-        <strong style="color:rgba(255,255,255,.7)">3pts</strong> — Chutou <strong>0×1</strong> → Saiu <strong>2×1</strong> · t2 fez 1 nos dois, mas t1 ganhou
-      </div>
-    </div>
-  </div>
-
-  <div class="card" style="padding:20px;margin-top:12px;">
     <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;margin-bottom:14px;">⭐ Apostas Especiais</div>
     <div class="pts-row"><div><div class="pts-label">🏆 Final completa (campeão + vice)<div class="pts-example">Acertou os dois finalistas na ordem certa</div></div></div><div><div class="pts-val">100</div></div></div>
     <div class="pts-row"><div><div class="pts-label">🥈 Finalista certo<div class="pts-example">Acertou 1 dos 2 finalistas (50pts cada)</div></div></div><div><div class="pts-val">50</div></div></div>
@@ -413,7 +418,8 @@ select option{background:#001d4a;color:#ffffff;}::-webkit-scrollbar-track{backgr
 
   <div class="card" style="text-align:center;padding:18px;margin-top:12px;">
     <div style="font-size:32px;margin-bottom:6px;">🏆</div>
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;margin-bottom:6px;">Máximo por jogo: 35 pontos (com Zebrona)</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;margin-bottom:6px;">Máximo por jogo (fase de grupos): 35 pontos (com Zebrona)</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1px;margin-bottom:6px;color:var(--purple);">Máximo por jogo (mata-mata com pênaltis): 35 pontos</div>
     <div style="font-size:13px;color:var(--gray);">Máximo especiais: <strong style="color:var(--yellow)">255 pontos</strong></div>
   </div>
 </div>
