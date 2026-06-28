@@ -1217,6 +1217,7 @@ async function loadPalpitesMM(jid, panel) {
 }
 
 
+function deadline(j) {
   var parts=j.hora.split(':'), h=parseInt(parts[0]), m=parseInt(parts[1]);
   return new Date(j.dataISO+'T'+(h<10?'0':'')+h+':'+(m<10?'0':'')+m+':00-03:00');
 }
