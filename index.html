@@ -751,7 +751,7 @@ async function loadAll() {
   try {
     var [res, resMM, unlock, zeb] = await Promise.all([
       sbGet('resultados', 'select=jogo_id,g1,g2'),
-      sbGet('resultados_mm', 'select=jogo_id,t1,t2,c1,c2,g1,g2'),
+      sbGet('resultados_mm', 'select=jogo_id,t1,t2,c1,c2,g1,g2,penalti_venc'),
       sbGet('mm_unlock', 'select=fase_id,unlocked'),
       sbGet('zebras', 'select=jogo_id,nivel,time_zebra')
     ]);
@@ -777,12 +777,12 @@ async function loadMyPicks() {
   try {
     var [p, pm] = await Promise.all([
       sbGet('palpites', 'select=jogo_id,g1,g2,saved_at&nick=eq.' + encodeURIComponent(currentNick)),
-      sbGet('palpites_mm', 'select=jogo_id,g1,g2,saved_at&nick=eq.' + encodeURIComponent(currentNick))
+      sbGet('palpites_mm', 'select=jogo_id,g1,g2,saved_at,penalti_venc&nick=eq.' + encodeURIComponent(currentNick))
     ]);
     myPalpites = {};
     p.forEach(function(r){ myPalpites[r.jogo_id] = {g1:r.g1, g2:r.g2, savedAt:r.saved_at}; });
     myPalpitesMM = {};
-    pm.forEach(function(r){ myPalpitesMM[r.jogo_id] = {g1:r.g1, g2:r.g2, savedAt:r.saved_at}; });
+    pm.forEach(function(r){ myPalpitesMM[r.jogo_id] = {g1:r.g1, g2:r.g2, savedAt:r.saved_at, penalti_venc:r.penalti_venc||null}; });
     // Load my especiais picks
     try {
       var ep = await sbGet('especiais_picks','select=tipo,valor,valor2,saved_at&nick=eq.'+encodeURIComponent(currentNick));
@@ -797,7 +797,7 @@ async function loadAdmData() {
     var [u, p, pm, ep] = await Promise.all([
       sbGet('usuarios', 'select=nick,pwd_hash,created_at,apostado&order=created_at.asc'),
       sbGet('palpites', 'select=nick,jogo_id,g1,g2,saved_at&limit=10000'),
-      sbGet('palpites_mm', 'select=nick,jogo_id,g1,g2,saved_at'),
+      sbGet('palpites_mm', 'select=nick,jogo_id,g1,g2,saved_at,penalti_venc'),
       sbGet('especiais_picks', 'select=nick,tipo,valor,valor2,saved_at')
     ]);
     allUsers = u;
@@ -1410,7 +1410,7 @@ function buildMMCard(j) {
     'Colômbia':'COL','Gana':'GHA','Uruguai':'URU','Coreia do Sul':'KOR','Rep. Tcheca':'CZE',
     'Irã':'IRN','Nova Zelândia':'NZL','Iraque':'IRQ','Jordânia':'JOR','Uzbequistão':'UZB',
     'Tunísia':'TUN','Haiti':'HAI','Escócia':'SCO','Curaçao':'CUW','Arábia Saudita':'KSA',
-    'Catar':'QAT','Turquia':'TUR','Panamá':'PAN','Gana':'GHA'
+    'Catar':'QAT','Turquia':'TUR','Panamá':'PAN'
   };
 
   var t1n = res&&res.t1 ? res.t1 : (descT1||'A definir');
@@ -1429,17 +1429,41 @@ function buildMMCard(j) {
     +'<div><input class="score-num" type="number" min="0" max="30" id="mm_s2_'+j.id+'"'
     +' value="'+(pick?pick.g2:'')+'" placeholder="—"'+(locked||!logado?' disabled':'')+'>'
     +'<div class="score-lbl">Gols</div></div></div></div>';
+
+  // Penalty selector (shown when scores are tied and not locked)
+  var isEmpate = pick && parseInt(pick.g1)===parseInt(pick.g2);
+  var penaltiSel = '';
+  if (!locked && logado) {
+    var selStyle = 'display:none;';
+    if (isEmpate) selStyle = 'display:flex;';
+    var pvenc = pick ? pick.penalti_venc : null;
+    penaltiSel = '<div id="mm_pen_'+j.id+'" style="'+selStyle+'flex-direction:column;align-items:center;gap:8px;padding:10px 15px;border-top:1px solid rgba(255,255,255,.08);background:rgba(124,58,237,.08);">'
+      +'<div style="font-family:Barlow Condensed,sans-serif;font-size:12px;color:var(--purple);letter-spacing:1px;font-weight:700;">⚽ QUEM PASSA NOS PÊNALTIS?</div>'
+      +'<div style="display:flex;gap:10px;">'
+      +'<button id="mm_pen1_'+j.id+'" onclick="selectPenalti(\''+j.id+'\',\'t1\')" class="pen-btn'+(pvenc==='t1'?' pen-active':'')+'" style="padding:7px 16px;border-radius:8px;border:1.5px solid rgba(255,255,255,.2);background:'+(pvenc==='t1'?'linear-gradient(135deg,#7c3aed,#5b21b6)':'rgba(255,255,255,.05)')+';color:white;font-family:Barlow Condensed,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">'+t1n+'</button>'
+      +'<button id="mm_pen2_'+j.id+'" onclick="selectPenalti(\''+j.id+'\',\'t2\')" class="pen-btn'+(pvenc==='t2'?' pen-active':'')+'" style="padding:7px 16px;border-radius:8px;border:1.5px solid rgba(255,255,255,.2);background:'+(pvenc==='t2'?'linear-gradient(135deg,#7c3aed,#5b21b6)':'rgba(255,255,255,.05)')+';color:white;font-family:Barlow Condensed,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">'+t2n+'</button>'
+      +'</div></div>';
+  }
+
   var bottomHTML='';
   if (!logado) {
     bottomHTML='<div class="locked-row">🔐 Entre para apostar</div>';
   } else if (locked&&res) {
     var pl=pick?pick.g1+' x '+pick.g2:'—';
-    var ptsObj=pick?calcPts(pick.g1,pick.g2,res.g1,res.g2,0):null;
-    var ptsStr=ptsObj?(' · <span style="color:var(--yellow);font-weight:700;">'+ptsObj.pts+'pts</span>'):'';
-    bottomHTML='<div class="locked-row">🔒 '+res.g1+' x '+res.g2+' · Palpite: <strong style="margin:0 4px">'+pl+'</strong>'+ptsStr+'</div>';
+    var pvencPick = pick ? pick.penalti_venc : null;
+    var pvencRes = res.penalti_venc;
+    var ptsObj = pick ? calcPtsMM(parseInt(pick.g1),parseInt(pick.g2),pvencPick,res.g1,res.g2,pvencRes) : null;
+    var ptsStr = ptsObj ? (' · <span style="color:var(--yellow);font-weight:700;">'+ptsObj.pts+'pts</span><span style="color:var(--gray);font-size:11px;"> '+ptsObj.label+'</span>') : '';
+    var penInfo = pvencRes ? (' · Pên: <strong>'+(pvencRes==='t1'?t1n:t2n)+'</strong>') : '';
+    bottomHTML='<div class="locked-row" style="flex-direction:column;align-items:flex-start;gap:3px;">'
+      +'<span>🔒 Resultado: <strong>'+res.g1+' x '+res.g2+'</strong>'+penInfo+'</span>'
+      +'<span>Palpite: <strong>'+pl+'</strong>'+(pvencPick?' · Pên: <strong>'+(pvencPick==='t1'?t1n:t2n)+'</strong>':'')+'</span>'
+      +ptsStr
+      +'</div>';
   } else if (pick) {
     var t=new Date(pick.savedAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    bottomHTML='<div class="save-row"><div class="saved-row">✅ <span>'+pick.g1+' x '+pick.g2+'</span> <span style="color:var(--gray);font-weight:400;font-size:11px">· '+t+'</span></div><button class="btn-edit" id="mm_be_'+j.id+'">✏️ Editar</button></div>';
+    var pvencLabel = pick.penalti_venc ? (' · Pên: '+(pick.penalti_venc==='t1'?t1n:t2n)) : '';
+    bottomHTML='<div class="save-row"><div class="saved-row">✅ <span>'+pick.g1+' x '+pick.g2+pvencLabel+'</span> <span style="color:var(--gray);font-weight:400;font-size:11px">· '+t+'</span></div><button class="btn-edit" id="mm_be_'+j.id+'">✏️ Editar</button></div>';
   } else {
     bottomHTML='<div class="save-row"><div class="pick-preview" id="mm_pv_'+j.id+'">Digite o placar</div><button class="btn-save" id="mm_bs_'+j.id+'" disabled>SALVAR</button></div>';
   }
@@ -1449,16 +1473,38 @@ function buildMMCard(j) {
   return '<div class="'+cardCls+'" id="mm_card_'+j.id+'">'
     +'<div class="match-top"><div class="match-meta"><b style="font-size:13px;color:var(--white);">'+matchTitle+'</b><br><span style="font-size:10px;">'+matchSub+'</span></div>'
     +'<div class="match-meta" style="color:rgba(255,255,255,.4);">'+j.data+'</div></div>'
-    +'<div class="match-body">'+scoreHTML+'</div>'+bottomHTML+'</div>';
+    +'<div class="match-body">'+scoreHTML+'</div>'+penaltiSel+bottomHTML+'</div>';
 }
 
 function onMMScoreChange(id) {
   var s1=document.getElementById('mm_s1_'+id), s2=document.getElementById('mm_s2_'+id);
   var btn=document.getElementById('mm_bs_'+id), pv=document.getElementById('mm_pv_'+id);
+  var penDiv=document.getElementById('mm_pen_'+id);
   if (!s1||!s2) return;
   var ok=s1.value!==''&&s2.value!==''&&Number(s1.value)>=0&&Number(s2.value)>=0;
   if (btn) btn.disabled=!ok;
   if (pv)  pv.innerHTML=ok?'Palpite: <span>'+s1.value+' x '+s2.value+'</span>':'Digite o placar';
+  // Mostrar/esconder selector de pênaltis
+  if (penDiv) {
+    var empate = ok && parseInt(s1.value)===parseInt(s2.value);
+    penDiv.style.display = empate ? 'flex' : 'none';
+    // Limpar seleção de pênaltis se deixar de ser empate
+    if (!empate) {
+      delete _mmPenalti[id];
+      var b1=document.getElementById('mm_pen1_'+id), b2=document.getElementById('mm_pen2_'+id);
+      if(b1){ b1.style.background='rgba(255,255,255,.05)'; b1.style.border='1.5px solid rgba(255,255,255,.2)'; }
+      if(b2){ b2.style.background='rgba(255,255,255,.05)'; b2.style.border='1.5px solid rgba(255,255,255,.2)'; }
+    }
+  }
+}
+
+// Guarda temporariamente a escolha de pênaltis antes de salvar
+var _mmPenalti = {};
+function selectPenalti(id, side) {
+  _mmPenalti[id] = side;
+  var b1=document.getElementById('mm_pen1_'+id), b2=document.getElementById('mm_pen2_'+id);
+  if(b1){ b1.style.background=side==='t1'?'linear-gradient(135deg,#7c3aed,#5b21b6)':'rgba(255,255,255,.05)'; b1.style.border='1.5px solid '+(side==='t1'?'#7c3aed':'rgba(255,255,255,.2)'); }
+  if(b2){ b2.style.background=side==='t2'?'linear-gradient(135deg,#7c3aed,#5b21b6)':'rgba(255,255,255,.05)'; b2.style.border='1.5px solid '+(side==='t2'?'#7c3aed':'rgba(255,255,255,.2)'); }
 }
 
 async function salvarMM(id) {
@@ -1466,15 +1512,18 @@ if (!currentNick) { showToast('err','🔐 Entre primeiro!'); return; }
 var s1=document.getElementById('mm_s1_'+id), s2=document.getElementById('mm_s2_'+id);
 if (!s1||s1.value===''||!s2||s2.value==='') { showToast('err','⚠️ Preencha o placar!'); return; }
 var g1=parseInt(s1.value), g2=parseInt(s2.value);
+var penalti_venc = (g1===g2) ? (_mmPenalti[id]||null) : null;
+if (g1===g2 && !penalti_venc) { showToast('err','⚠️ Escolha quem passa nos pênaltis!'); return; }
 try {
 var r=await fetch(EDGE_BASE+'/save-pick-mm',{
 method:'POST',
 headers:{'Content-Type':'application/json','apikey':SUPA_KEY},
-body:JSON.stringify({nick:currentNick,pwd_hash:currentHash,jogo_id:id,g1:g1,g2:g2})
+body:JSON.stringify({nick:currentNick,pwd_hash:currentHash,jogo_id:id,g1:g1,g2:g2,penalti_venc:penalti_venc})
 });
 var d=await r.json();
 if(!r.ok){showToast('err','🔒 '+(d.error||'Erro ao salvar'));return;}
-myPalpitesMM[id]={g1:g1,g2:g2,savedAt:new Date().toISOString()};
+myPalpitesMM[id]={g1:g1,g2:g2,savedAt:new Date().toISOString(),penalti_venc:penalti_venc};
+delete _mmPenalti[id];
 showToast('ok','✅ Palpite do mata-mata salvo!');
 renderMataMata();
 renderMmPicks();
@@ -1552,8 +1601,54 @@ function calcPts(g1p,g2p,g1r,g2r,zebraLevel){
   return base;
 }
 
+// ── PONTUAÇÃO MATA-MATA ──
+// g1p,g2p = palpite; pvencP = pênaltis apostado ('t1','t2',null)
+// g1r,g2r = resultado; pvencR = quem passou ('t1','t2',null)
+function calcPtsMM(g1p, g2p, pvencP, g1r, g2r, pvencR) {
+  var rr = g1r===g2r ? 0 : g1r>g2r ? 1 : 2; // 0=empate, 1=t1 venceu, 2=t2 venceu
+  var rp = g1p===g2p ? 0 : g1p>g2p ? 1 : 2;
 
-// Build zebraInfo object for calcPts from global zebras map and JOGOS
+  // Jogo terminou empatado (foi para pênaltis)
+  if (rr === 0) {
+    var acertouEmpate = (rp === 0);
+    var acertouPlacarExato = acertouEmpate && (g1p===g1r && g2p===g2r);
+    var acertouPen = pvencR && pvencP && pvencP===pvencR;
+
+    if (acertouPlacarExato && acertouPen)  return {pts:35, label:'🎯 Placar exato + pênaltis'};
+    if (acertouPlacarExato && !acertouPen) return {pts:20, label:'🎯 Placar exato'};
+    if (acertouEmpate && acertouPen)       return {pts:25, label:'🤝 Empate + pênaltis'};
+    if (acertouEmpate && !acertouPen)      return {pts:10, label:'🤝 Empate certo'};
+    // Apostou não-empate mas acertou quem passa
+    if (!acertouEmpate && acertouPen)      return {pts:10, label:'✅ Acertou o classificado'};
+    return {pts:0, label:'❌ Errou'};
+  }
+
+  // Jogo decidido sem empate
+  // Acertou quem passa (=vencedor) mas apostou empate
+  if (rp === 0) {
+    var penAcertou = pvencR && pvencP && pvencP===pvencR;
+    if (penAcertou) return {pts:10, label:'✅ Acertou o classificado'};
+    return {pts:0, label:'❌ Errou'};
+  }
+
+  // Apostou não-empate
+  if (rp !== rr) {
+    // Errou o vencedor — acertou quem passa nos pênaltis? (não houve pênaltis mas pvencP===side vencedor)
+    var vencedorSide = rr===1 ? 't1' : 't2';
+    if (pvencP && pvencP===vencedorSide) return {pts:10, label:'✅ Acertou o classificado'};
+    return {pts:0, label:'❌ Errou'};
+  }
+
+  // Acertou o vencedor
+  if (g1p===g1r && g2p===g2r) return {pts:25, label:'🎯 Placar exato'};
+  var gvP=rp===1?g1p:g2p, gvR=rr===1?g1r:g2r;
+  var gpP=rp===1?g2p:g1p, gpR=rr===1?g2r:g1r; // gols do perdedor
+  var saldoP=Math.abs(g1p-g2p), saldoR=Math.abs(g1r-g2r);
+  if (gvP===gvR) return {pts:15, label:'🥇 Vencedor + gols do vencedor'};
+  if (gpP===gpR) return {pts:12, label:'🏆 Vencedor + gols do perdedor'};
+  if (saldoP===saldoR) return {pts:12, label:'🏆 Vencedor + saldo de gols'};
+  return {pts:10, label:'✅ Vencedor certo'};
+}
 function getZebraInfo(jid) {
   var z=zebras[jid];
   if(!z||!z.nivel||!z.time) return 0;
@@ -1581,7 +1676,7 @@ function calcTotalUser(nick) {
   });
   myPMM.forEach(function(p){
     var res=mmResults[p.jogo_id];
-    if(res){var r=calcPts(p.g1,p.g2,res.g1,res.g2,res.zebra||0);pts+=r.pts;if(r.pts===25)exact++;if(r.pts>=10)vc++;}
+    if(res){var r=calcPtsMM(parseInt(p.g1),parseInt(p.g2),p.penalti_venc||null,res.g1,res.g2,res.penalti_venc||null);pts+=r.pts;if(r.pts===25||r.pts===35)exact++;if(r.pts>=10)vc++;}
   });
   // Add especiais pts for this user
   var espPicks={};
@@ -1742,6 +1837,9 @@ function renderAdmMataMata() {
       +'<table class="adm-table" style="margin-bottom:8px;"><thead><tr><th>Jogo</th><th>Time 1</th><th>Time 2</th><th>Resultado</th><th>Salvar</th></tr></thead><tbody>';
     fase.jogos.forEach(function(j){
       var res=mmResults[j.id];
+      var pv=res?res.penalti_venc||'':'';
+      var t1n=res&&res.t1?res.t1:(j.desc?j.desc.split('×')[0].trim():'Time 1');
+      var t2n=res&&res.t2?res.t2:(j.desc?j.desc.split('×')[1].trim():'Time 2');
       html+='<tr><td style="font-size:11px;color:var(--gray);">'+j.desc+'<br>'+j.data+' '+j.hora+'h</td>'
         +'<td><input type="text" id="mm_t1_'+j.id+'" value="'+(res&&res.t1?res.t1:'')+'" placeholder="Seleção 1" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:5px;padding:4px 8px;color:white;font-size:12px;width:110px;outline:none;"></td>'
         +'<td><input type="text" id="mm_t2_'+j.id+'" value="'+(res&&res.t2?res.t2:'')+'" placeholder="Seleção 2" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:5px;padding:4px 8px;color:white;font-size:12px;width:110px;outline:none;"></td>'
@@ -1750,6 +1848,11 @@ function renderAdmMataMata() {
         +'<span style="color:var(--gray);">x</span>'
         +'<input class="result-score" type="number" min="0" max="30" id="mm_r2_'+j.id+'" value="'+(res!=null?res.g2:'')+'" placeholder="—">'
         +(res!=null?'<span style="color:var(--green);margin-left:4px;">✓</span>':'')
+        +'</div>'
+        +'<div style="margin-top:5px;font-family:Barlow Condensed,sans-serif;font-size:11px;color:var(--gray);">Quem passou:</div>'
+        +'<div style="display:flex;gap:4px;margin-top:3px;">'
+        +'<button id="adm_pen1_'+j.id+'" onclick="admSelectPen(\''+j.id+'\',\'t1\')" style="padding:3px 8px;border-radius:5px;border:1px solid rgba(255,255,255,.2);background:'+(pv==='t1'?'#7c3aed':'rgba(255,255,255,.05)')+';color:white;font-size:11px;cursor:pointer;font-family:Barlow Condensed,sans-serif;">'+t1n+'</button>'
+        +'<button id="adm_pen2_'+j.id+'" onclick="admSelectPen(\''+j.id+'\',\'t2\')" style="padding:3px 8px;border-radius:5px;border:1px solid rgba(255,255,255,.2);background:'+(pv==='t2'?'#7c3aed':'rgba(255,255,255,.05)')+';color:white;font-size:11px;cursor:pointer;font-family:Barlow Condensed,sans-serif;">'+t2n+'</button>'
         +'</div></td>'
         +'<td><button class="btn-sm green" id="mm_save_'+j.id+'">OK</button></td></tr>';
     });
@@ -1782,6 +1885,14 @@ showToast('info', newVal?'🔓 '+fid+' liberado!':'🔒 '+fid+' bloqueado.');
 } catch(e){ showToast('err','Erro: '+e.message); }
 }
 
+var _admPen = {};
+function admSelectPen(id, side) {
+  _admPen[id] = side;
+  var b1=document.getElementById('adm_pen1_'+id), b2=document.getElementById('adm_pen2_'+id);
+  if(b1) b1.style.background = side==='t1'?'#7c3aed':'rgba(255,255,255,.05)';
+  if(b2) b2.style.background = side==='t2'?'#7c3aed':'rgba(255,255,255,.05)';
+}
+
 async function saveMMResult(id) {
 var t1=document.getElementById('mm_t1_'+id).value.trim();
 var t2=document.getElementById('mm_t2_'+id).value.trim();
@@ -1789,13 +1900,15 @@ var g1=document.getElementById('mm_r1_'+id).value;
 var g2=document.getElementById('mm_r2_'+id).value;
 if(!t1||!t2){showToast('err','Preencha os nomes!');return;}
 if(g1===''||g2===''){showToast('err','Preencha o placar!');return;}
+var penalti_venc = _admPen[id] || (mmResults[id]?mmResults[id].penalti_venc||null:null);
+if(!penalti_venc){showToast('err','Escolha quem passou!');return;}
 try {
-var r=await fetch(EDGE_BASE+'/adm-action',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_KEY},body:JSON.stringify({adm_pwd:admToken,action:'save_resultado_mm',jogo_id:id,t1:t1,t2:t2,c1:'',c2:'',g1:parseInt(g1),g2:parseInt(g2)})});
+var r=await fetch(EDGE_BASE+'/adm-action',{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPA_KEY},body:JSON.stringify({adm_pwd:admToken,action:'save_resultado_mm',jogo_id:id,t1:t1,t2:t2,c1:'',c2:'',g1:parseInt(g1),g2:parseInt(g2),penalti_venc:penalti_venc})});
 var d=await r.json();
 if(!r.ok){showToast('err',d.error||'Erro');return;}
-mmResults[id]={t1:t1,t2:t2,g1:parseInt(g1),g2:parseInt(g2)};
+mmResults[id]={t1:t1,t2:t2,g1:parseInt(g1),g2:parseInt(g2),penalti_venc:penalti_venc};
 renderAdmMataMata(); renderMataMata(); renderMmPicks(); renderTabela();
-showToast('ok','✅ '+t1+' '+g1+'x'+g2+' '+t2);
+showToast('ok','✅ '+t1+' '+g1+'x'+g2+' '+t2+' · Passou: '+(penalti_venc==='t1'?t1:t2));
 } catch(e){ showToast('err','Erro: '+e.message); }
 }
 
@@ -2020,7 +2133,7 @@ function renderAdmPalpites() {
       fase.jogos.forEach(function(j){
         var p   = myPMM.find(function(x){return x.jogo_id===j.id;});
         var res = mmResults[j.id];
-        var ptsObj = (p&&res) ? calcPts(p.g1,p.g2,res.g1,res.g2,0) : null;
+        var ptsObj = (p&&res) ? calcPtsMM(parseInt(p.g1),parseInt(p.g2),p.penalti_venc||null,res.g1,res.g2,res.penalti_venc||null) : null;
         var savedTime = p&&p.saved_at ? new Date(p.saved_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
         var ptStyle='';
         if(ptsObj){ if(ptsObj.pts>=25) ptStyle='color:#fbbf24;font-weight:700;'; else if(ptsObj.pts>=10) ptStyle='color:var(--green);font-weight:700;'; else if(ptsObj.pts>0) ptStyle='color:var(--purple);font-weight:700;'; else ptStyle='color:var(--gray);'; }
@@ -2612,7 +2725,7 @@ async function exportCSV() {
       MATA_MATA_FASES.forEach(function(f){f.jogos.forEach(function(j){if(j.id===p.jogo_id){fase=f;jogo=j;}});});
       if(!jogo) return;
       var res=mmResults[p.jogo_id];
-      var pts=res?calcPts(p.g1,p.g2,res.g1,res.g2,0).pts:'';
+      var pts=res?calcPtsMM(parseInt(p.g1),parseInt(p.g2),p.penalti_venc||null,res.g1,res.g2,res.penalti_venc||null).pts:'';
       csv+='"'+u.nick+'",'+(fase?'"'+fase.label+'"':'"MM"')+',"'+jogo.desc+'","'+jogo.data+'","'+jogo.hora+'","'+p.g1+'x'+p.g2+'","'+(res?res.g1+'x'+res.g2:'')+'","'+pts+'"\n';
     });
   });
