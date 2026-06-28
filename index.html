@@ -742,6 +742,7 @@ var myPalpites  = {};     // { jogoId: {g1,g2,saved_at} }
 var myPalpitesMM= {};     // { jogoId: {g1,g2,saved_at} }
 var cTab='dias', cGrupo='TODOS', cDia='HOJE';
 var palpitesAbertos={};
+var _admPen = {};
 
 function simpleHash(str) {
   var h = 5381;
@@ -1059,15 +1060,6 @@ function setMmFilter(val, btn) {
 }
 
 function renderMmPicks() {
-  // Auth panel — mostrar info do utilizador se logado
-  var authEl = document.getElementById('mmPicksAuthPanel');
-  if(authEl) {
-    if(currentNick) {
-      authEl.innerHTML='<div class="auth-panel"><div class="u-info show"><div class="u-avatar">⚡</div><div><div class="u-name">'+currentNick+'</div><div class="u-sub">'+Object.keys(myPalpitesMM).length+' palpites mata-mata</div></div><button class="btn-change" onclick="logout()">Sair</button></div></div>';
-    } else {
-      authEl.innerHTML='';
-    }
-  }
   buildMmDiaFilters();
   renderMmPicksContent();
 }
@@ -1533,7 +1525,8 @@ renderMmPicks();
 } catch(e) { showToast('err','Erro: '+e.message); }
 }
 
-try {
+async function editMMPick(id) {
+  try {
     var r=await fetch(EDGE_BASE+'/save-pick-mm',{
       method:'POST',
       headers:{'Content-Type':'application/json','apikey':SUPA_KEY},
@@ -1893,7 +1886,6 @@ showToast('info', newVal?'🔓 '+fid+' liberado!':'🔒 '+fid+' bloqueado.');
 } catch(e){ showToast('err','Erro: '+e.message); }
 }
 
-var _admPen = {};
 function admSelectPen(id, side) {
   _admPen[id] = side;
   var b1=document.getElementById('adm_pen1_'+id), b2=document.getElementById('adm_pen2_'+id);
