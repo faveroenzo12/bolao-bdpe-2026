@@ -1533,9 +1533,14 @@ renderMmPicks();
 } catch(e) { showToast('err','Erro: '+e.message); }
 }
 
-async function editMMPick(id) {
-  try {
-    await sbDelete('palpites_mm','nick=eq.'+encodeURIComponent(currentNick)+'&jogo_id=eq.'+id);
+try {
+    var r=await fetch(EDGE_BASE+'/save-pick-mm',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPA_KEY},
+      body:JSON.stringify({nick:currentNick,pwd_hash:currentHash,jogo_id:id,action:'delete'})
+    });
+    var d=await r.json();
+    if(!r.ok){showToast('err',d.error||'Erro');return;}
     delete myPalpitesMM[id]; renderMataMata(); renderMmPicks();
     showToast('info','✏️ Edite seu palpite!');
   } catch(e) { showToast('err','Erro: '+e.message); }
