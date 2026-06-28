@@ -1060,7 +1060,7 @@ function renderMmPicks() {
     if(currentNick) {
       authEl.innerHTML='<div class="auth-panel"><div class="u-info show"><div class="u-avatar">⚡</div><div><div class="u-name">'+currentNick+'</div><div class="u-sub">'+Object.keys(myPalpitesMM).length+' palpites mata-mata</div></div><button class="btn-change" onclick="logout()">Sair</button></div></div>';
     } else {
-      authEl.innerHTML='<div class="card" style="text-align:center;padding:20px;color:var(--gray);font-family:Barlow Condensed,sans-serif;font-size:14px;margin-bottom:16px;">🔐 Entre na aba <strong>Palpites · Fase de Grupos</strong> para apostar no mata-mata também.</div>';
+      authEl.innerHTML='';
     }
   }
   buildMmDiaFilters();
