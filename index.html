@@ -220,7 +220,8 @@ select option{background:#001d4a;color:#ffffff;}::-webkit-scrollbar-track{backgr
 </header>
 <nav class="nav">
   <div class="nav-inner">
-    <button class="nav-btn active" onclick="goPage('palpites',this)">⚽ Palpites</button>
+    <button class="nav-btn active" onclick="goPage('matamata-picks',this)">⚡ Palpites · Mata-Mata</button>
+    <button class="nav-btn" onclick="goPage('palpites',this)">⚽ Palpites · Fase de Grupos</button>
     <button class="nav-btn" onclick="goPage('tabela',this)">🏅 Tabela</button>
 <button class="nav-btn" id="btnTabelaApostada" onclick="goPage('tabela-apostada',this)" style="display:none">💰 Apostados</button>
     <button class="nav-btn" onclick="goPage('chat',this)">💬 Chat</button>
@@ -232,8 +233,16 @@ select option{background:#001d4a;color:#ffffff;}::-webkit-scrollbar-track{backgr
   </div>
 </nav>
 
+<!-- PAGE: MATA-MATA PICKS -->
+<div class="page active" id="page-matamata-picks">
+  <div id="mmPicksAuthPanel"></div>
+  <div class="filter-row" id="fMmDias"></div>
+  <div id="mmJogosHoje"></div>
+  <div id="mmMatchList"></div>
+</div>
+
 <!-- PAGE: PALPITES -->
-<div class="page active" id="page-palpites">
+<div class="page" id="page-palpites">
   <div class="auth-panel" id="authPanel">
     <!-- Logged in state -->
     <div class="u-info" id="uBar">
@@ -841,6 +850,7 @@ async function doRegister() {
     document.getElementById('regNick').value=''; document.getElementById('regPwd').value=''; document.getElementById('regPwd2').value='';
     await loadMyPicks();
     renderUserBar(); render();
+    renderMmPicks();
     showToast('ok', '✅ Conta criada! Bem-vindo(a), '+nick+'!');
   } catch(e) { errEl.textContent='Erro ao criar conta: '+e.message; errEl.style.display='block'; }
 }
@@ -862,6 +872,7 @@ async function doLogin() {
     document.getElementById('loginNick').value=''; document.getElementById('loginPwd').value='';
     await loadMyPicks();
     renderUserBar(); render();
+    renderMmPicks();
     showToast('info', '👋 Bem-vindo(a) de volta, '+rows[0].nick+'!');
   } catch(e) { errEl.textContent='Erro: '+e.message; errEl.style.display='block'; }
 }
@@ -873,6 +884,7 @@ function logout() {
   var btnTA=document.getElementById('btnTabelaApostada');
   if(btnTA) btnTA.style.display='none';
   renderUserBar(); render();
+  renderMmPicks();
 }
 
 function renderUserBar() {
@@ -900,11 +912,11 @@ function goPage(id, btn) {
   btn.classList.add('active');
   if (id==='tabela')    renderTabela();
   if (id==='matamata')  renderMataMata();
+  if (id==='matamata-picks') renderMmPicks();
   if (id==='stats')     renderStatsPage();
   if (id==='especiais') renderEspeciais();
   if (id==='chat') initChat();
   if (id==='tabela-apostada') renderTabelaApostada();
-  if (id==='chat') initChat();
   if (id==='adm' && document.getElementById('admContent').classList.contains('show')) renderAdm();
 }
 
@@ -979,7 +991,136 @@ function buildDiaFilters() {
   row.appendChild(btnTodos);
 }
 
-// ── DEADLINE ──
+// ── MATA-MATA PICKS PAGE ──
+var cMmDia = 'HOJE';
+
+function diaExibicaoMM(j) {
+  var h = parseInt(j.hora.split(':')[0]);
+  if (h < 3) {
+    var d = new Date(j.dataISO + 'T12:00:00');
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().slice(0,10);
+  }
+  return j.dataISO;
+}
+
+function diaExibicaoLabelMM(j) {
+  var iso = diaExibicaoMM(j);
+  var parts = iso.split('-');
+  return parts[2]+'/'+parts[1];
+}
+
+function buildMmDiaFilters() {
+  var diasMap = {};
+  // Recolher todos os jogos desbloqueados do r32
+  MATA_MATA_FASES.forEach(function(fase){
+    if(!mmUnlock[fase.id]) return;
+    fase.jogos.forEach(function(j){
+      var label = diaExibicaoLabelMM(j);
+      if(!diasMap[label]) diasMap[label] = diaExibicaoMM(j);
+    });
+  });
+  var diasArr = Object.keys(diasMap).sort(function(a,b){
+    return diasMap[a] > diasMap[b] ? 1 : -1;
+  });
+  var row = document.getElementById('fMmDias');
+  if(!row) return;
+  row.innerHTML = '';
+
+  var btnHoje = document.createElement('button');
+  btnHoje.className='filter-btn active'; btnHoje.textContent='🗓️ Jogos do Dia';
+  btnHoje.style.cssText='background:linear-gradient(135deg,#7c3aed,#5b21b6);border-color:#7c3aed;color:white;';
+  btnHoje.onclick = function(){ setMmFilter('HOJE',this); };
+  row.appendChild(btnHoje);
+
+  diasArr.forEach(function(label){
+    var b = document.createElement('button');
+    b.className='filter-btn'; b.textContent=label;
+    b.onclick = function(){ setMmFilter(label,this); };
+    row.appendChild(b);
+  });
+
+  var btnTodos = document.createElement('button');
+  btnTodos.className='filter-btn';
+  btnTodos.textContent='🏆 Todos os Jogos';
+  btnTodos.style.cssText='background:linear-gradient(135deg,#b45309,#92400e);border-color:#b45309;color:white;';
+  btnTodos.onclick = function(){ setMmFilter('TODOS',this); };
+  row.appendChild(btnTodos);
+}
+
+function setMmFilter(val, btn) {
+  cMmDia = val;
+  document.getElementById('fMmDias').querySelectorAll('.filter-btn').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  renderMmPicksContent();
+}
+
+function renderMmPicks() {
+  // Auth panel — mostrar info do utilizador se logado
+  var authEl = document.getElementById('mmPicksAuthPanel');
+  if(authEl) {
+    if(currentNick) {
+      authEl.innerHTML='<div class="auth-panel"><div class="u-info show"><div class="u-avatar">⚡</div><div><div class="u-name">'+currentNick+'</div><div class="u-sub">'+Object.keys(myPalpitesMM).length+' palpites mata-mata</div></div><button class="btn-change" onclick="logout()">Sair</button></div></div>';
+    } else {
+      authEl.innerHTML='<div class="card" style="text-align:center;padding:20px;color:var(--gray);font-family:Barlow Condensed,sans-serif;font-size:14px;margin-bottom:16px;">🔐 Entre na aba <strong>Palpites · Fase de Grupos</strong> para apostar no mata-mata também.</div>';
+    }
+  }
+  buildMmDiaFilters();
+  renderMmPicksContent();
+}
+
+function renderMmJogosHoje() {
+  var el = document.getElementById('mmJogosHoje');
+  if(!el) return;
+  if(cMmDia !== 'HOJE') { el.innerHTML=''; return; }
+  var hoje = new Date().toISOString().slice(0,10);
+  var jogosHoje = [];
+  MATA_MATA_FASES.forEach(function(fase){
+    if(!mmUnlock[fase.id]) return;
+    fase.jogos.forEach(function(j){
+      if(diaExibicaoMM(j) === hoje) jogosHoje.push(j);
+    });
+  });
+  if(!jogosHoje.length){ el.innerHTML=''; return; }
+  var html='<div class="section-hdr" style="margin-top:0;">'
+    +'<div class="section-badge" style="background:linear-gradient(135deg,#7c3aed,#5b21b6);font-size:16px;">🗓️ JOGOS DO DIA</div>'
+    +'<div class="section-line"></div>'
+    +'<div class="section-sub">'+jogosHoje.length+' jogo'+(jogosHoje.length>1?'s':'')+'</div>'
+    +'</div>';
+  jogosHoje.forEach(function(j){ html+=buildMMCard(j); });
+  el.innerHTML=html;
+}
+
+function renderMmPicksContent() {
+  renderMmJogosHoje();
+  var el = document.getElementById('mmMatchList');
+  if(!el) return;
+
+  // Verificar se há fases desbloqueadas
+  var anyUnlocked = MATA_MATA_FASES.some(function(f){ return !!mmUnlock[f.id]; });
+  if(!anyUnlocked) {
+    document.getElementById('fMmDias').style.display='none';
+    document.getElementById('mmJogosHoje').innerHTML='';
+    el.innerHTML='<div class="card" style="text-align:center;padding:40px;color:var(--gray);font-family:Barlow Condensed,sans-serif;font-size:16px;">⏳ O mata-mata começa após o fim da fase de grupos.<br><span style="font-size:12px;margin-top:8px;display:block;">O ADM irá liberar cada fase conforme a competição avançar.</span></div>';
+    return;
+  }
+  document.getElementById('fMmDias').style.display='flex';
+
+  if(cMmDia === 'HOJE') { el.innerHTML=''; return; }
+
+  var html='';
+  MATA_MATA_FASES.forEach(function(fase){
+    if(!mmUnlock[fase.id]) return;
+    var jogos = fase.jogos.filter(function(j){
+      if(cMmDia === 'TODOS') return true;
+      return diaExibicaoLabelMM(j) === cMmDia;
+    });
+    if(!jogos.length) return;
+    html+='<div class="section-hdr"><div class="section-badge" style="background:linear-gradient(135deg,#7c3aed,#5b21b6);">'+fase.emoji+' '+fase.label+'</div><div class="section-line"></div><div class="section-sub">'+jogos.length+' jogo'+(jogos.length>1?'s':'')+'</div></div>';
+    jogos.forEach(function(j){ html+=buildMMCard(j); });
+  });
+  el.innerHTML=html||'<div class="card" style="text-align:center;padding:30px;color:var(--gray);">Nenhum jogo neste dia.</div>';
+}
 function deadline(j) {
   var parts=j.hora.split(':'), h=parseInt(parts[0]), m=parseInt(parts[1]);
   return new Date(j.dataISO+'T'+(h<10?'0':'')+h+':'+(m<10?'0':'')+m+':00-03:00');
@@ -1314,13 +1455,14 @@ if(!r.ok){showToast('err','🔒 '+(d.error||'Erro ao salvar'));return;}
 myPalpitesMM[id]={g1:g1,g2:g2,savedAt:new Date().toISOString()};
 showToast('ok','✅ Palpite do mata-mata salvo!');
 renderMataMata();
+renderMmPicks();
 } catch(e) { showToast('err','Erro: '+e.message); }
 }
 
 async function editMMPick(id) {
   try {
     await sbDelete('palpites_mm','nick=eq.'+encodeURIComponent(currentNick)+'&jogo_id=eq.'+id);
-    delete myPalpitesMM[id]; renderMataMata();
+    delete myPalpitesMM[id]; renderMataMata(); renderMmPicks();
     showToast('info','✏️ Edite seu palpite!');
   } catch(e) { showToast('err','Erro: '+e.message); }
 }
@@ -1613,7 +1755,7 @@ var r=await fetch(EDGE_BASE+'/adm-action',{method:'POST',headers:{'Content-Type'
 var d=await r.json();
 if(!r.ok){showToast('err',d.error||'Erro');return;}
 mmUnlock[fid]=newVal;
-renderAdmMataMata(); renderMataMata();
+renderAdmMataMata(); renderMataMata(); renderMmPicks();
 showToast('info', newVal?'🔓 '+fid+' liberado!':'🔒 '+fid+' bloqueado.');
 } catch(e){ showToast('err','Erro: '+e.message); }
 }
@@ -1630,7 +1772,7 @@ var r=await fetch(EDGE_BASE+'/adm-action',{method:'POST',headers:{'Content-Type'
 var d=await r.json();
 if(!r.ok){showToast('err',d.error||'Erro');return;}
 mmResults[id]={t1:t1,t2:t2,g1:parseInt(g1),g2:parseInt(g2)};
-renderAdmMataMata(); renderMataMata(); renderTabela();
+renderAdmMataMata(); renderMataMata(); renderMmPicks(); renderTabela();
 showToast('ok','✅ '+t1+' '+g1+'x'+g2+' '+t2);
 } catch(e){ showToast('err','Erro: '+e.message); }
 }
@@ -2708,6 +2850,7 @@ async function init() {
   buildDiaFilters();
   renderUserBar();
   render();
+  renderMmPicks();
   // 1-second ticker for live countdowns + lock detection
   var _lastLockedState = {};
   setInterval(function(){
@@ -2743,6 +2886,7 @@ async function init() {
       renderTabela();
     }
     if(document.getElementById('page-matamata').classList.contains('active')) renderMataMata();
+    if(document.getElementById('page-matamata-picks').classList.contains('active')) renderMmPicks();
     if(document.getElementById('page-stats').classList.contains('active')) renderStatsPage();
   }, 60000);
 }
