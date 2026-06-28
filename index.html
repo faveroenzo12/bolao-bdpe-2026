@@ -1393,9 +1393,31 @@ function renderMataMata() {
 function buildMMCard(j) {
   var pick=myPalpitesMM[j.id], res=mmResults[j.id], logado=!!currentNick;
   var locked=!!res;
-  var t1n=res&&res.t1?res.t1:'A definir';
-  var t2n=res&&res.t2?res.t2:'A definir';
-  var t1c=res&&res.c1?res.c1:''; var t2c=res&&res.c2?res.c2:'';
+
+  // Extrair nomes do campo desc (ex: "Brasil × Japão") quando ADM ainda não preencheu
+  var descParts = j.desc ? j.desc.split('×') : [];
+  var descT1 = descParts.length===2 ? descParts[0].trim() : '';
+  var descT2 = descParts.length===2 ? descParts[1].trim() : '';
+
+  // Mapa de nomes para códigos de bandeira
+  var NOME_COD = {
+    'África do Sul':'RSA','Canadá':'CAN','Brasil':'BRA','Japão':'JPN','Alemanha':'GER',
+    'Paraguai':'PAR','Holanda':'NED','Marrocos':'MAR','Costa do Marfim':'CIV','Noruega':'NOR',
+    'França':'FRA','Suécia':'SWE','México':'MEX','Equador':'ECU','Inglaterra':'ENG',
+    'RD Congo':'COD','Bélgica':'BEL','Senegal':'SEN','Estados Unidos':'USA','Bósnia':'BIH',
+    'Espanha':'ESP','Áustria':'AUT','Portugal':'POR','Croácia':'CRO','Suíça':'SUI',
+    'Argélia':'ALG','Austrália':'AUS','Egito':'EGY','Argentina':'ARG','Cabo Verde':'CPV',
+    'Colômbia':'COL','Gana':'GHA','Uruguai':'URU','Coreia do Sul':'KOR','Rep. Tcheca':'CZE',
+    'Irã':'IRN','Nova Zelândia':'NZL','Iraque':'IRQ','Jordânia':'JOR','Uzbequistão':'UZB',
+    'Tunísia':'TUN','Haiti':'HAI','Escócia':'SCO','Curaçao':'CUW','Arábia Saudita':'KSA',
+    'Catar':'QAT','Turquia':'TUR','Panamá':'PAN','Gana':'GHA'
+  };
+
+  var t1n = res&&res.t1 ? res.t1 : (descT1||'A definir');
+  var t2n = res&&res.t2 ? res.t2 : (descT2||'A definir');
+  var t1c = res&&res.c1 ? res.c1 : (NOME_COD[t1n]||'');
+  var t2c = res&&res.c2 ? res.c2 : (NOME_COD[t2n]||'');
+
   var cardCls='match-card'+(pick?' picked':'')+(locked?' locked-card':'');
   var scoreHTML='<div class="score-wrap">'
     +'<div class="team-side">'+flagImg(t1c,t1n)+'<div class="team-name">'+t1n+'</div>'
