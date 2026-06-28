@@ -743,6 +743,42 @@ var myPalpitesMM= {};     // { jogoId: {g1,g2,saved_at} }
 var cTab='dias', cGrupo='TODOS', cDia='HOJE';
 var palpitesAbertos={};
 var _admPen = {};
+var palpitesAbertosMM={};
+
+// Deadlines do mata-mata (mesmos da Edge Function)
+var DEADLINES_MM_JS = {
+  'mm_r32_01':'2026-06-28T16:00:00-03:00',
+  'mm_r32_02':'2026-06-29T14:00:00-03:00',
+  'mm_r32_03':'2026-06-29T17:30:00-03:00',
+  'mm_r32_04':'2026-06-29T22:00:00-03:00',
+  'mm_r32_05':'2026-06-30T14:00:00-03:00',
+  'mm_r32_06':'2026-06-30T18:00:00-03:00',
+  'mm_r32_07':'2026-06-30T22:00:00-03:00',
+  'mm_r32_08':'2026-07-01T15:00:00-03:00',
+  'mm_r32_09':'2026-07-01T19:00:00-03:00',
+  'mm_r32_10':'2026-07-01T21:00:00-03:00',
+  'mm_r32_11':'2026-07-02T16:00:00-03:00',
+  'mm_r32_12':'2026-07-02T20:00:00-03:00',
+  'mm_r32_13':'2026-07-03T00:00:00-03:00',
+  'mm_r32_14':'2026-07-03T15:00:00-03:00',
+  'mm_r32_15':'2026-07-03T19:00:00-03:00',
+  'mm_r32_16':'2026-07-03T22:30:00-03:00',
+};
+function deadlineMM(j) { var d=DEADLINES_MM_JS[j.id]; return d?new Date(d):new Date('2099-01-01'); }
+function isLockedMM(j) { return new Date()>=deadlineMM(j)||!!mmResults[j.id]; }
+function dlStatusMM(j) { var ms=deadlineMM(j)-new Date(); return ms<=0||mmResults[j.id]?'locked':ms<=3600000?'soon':'open'; }
+function dlLabelMM(j) {
+  if(mmResults[j.id]) return '🔒 Encerrado';
+  var ms=deadlineMM(j)-new Date();
+  if(ms<=0) return '🔒 Encerrado';
+  var totalSec=Math.floor(ms/1000);
+  var h=Math.floor(totalSec/3600);
+  var m=Math.floor((totalSec%3600)/60);
+  var s=totalSec%60;
+  if(ms<3600000) return '⚠️ '+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  if(ms<86400000) return '🟡 '+h+'h '+String(m).padStart(2,'0')+'m';
+  return '🟢 '+j.data.split(' ')[0]+' '+j.hora+'h';
+}
 
 function simpleHash(str) {
   var h = 5381;
@@ -1116,7 +1152,71 @@ function renderMmPicksContent() {
   });
   el.innerHTML=html||'<div class="card" style="text-align:center;padding:30px;color:var(--gray);">Nenhum jogo neste dia.</div>';
 }
-function deadline(j) {
+function togglePalpitesMM(jid) {
+  palpitesAbertosMM[jid] = !palpitesAbertosMM[jid];
+  var arr = document.getElementById('mm_arr_'+jid);
+  var panel = document.getElementById('mm_panel_'+jid);
+  if(!panel) return;
+  if(palpitesAbertosMM[jid]) {
+    if(arr) arr.style.transform='rotate(180deg)';
+    panel.style.display='block';
+    loadPalpitesMM(jid, panel);
+  } else {
+    if(arr) arr.style.transform='rotate(0deg)';
+    panel.style.display='none';
+  }
+}
+
+async function loadPalpitesMM(jid, panel) {
+  panel.innerHTML='<div style="padding:10px 15px;font-family:Barlow Condensed,sans-serif;font-size:12px;color:var(--gray);">Carregando palpites...</div>';
+  try {
+    var picks = await sbGet('palpites_mm', 'select=nick,g1,g2,penalti_venc&jogo_id=eq.'+jid+'&order=saved_at.asc');
+    var res = mmResults[jid];
+    // Find team names from MATA_MATA_FASES
+    var jogo=null;
+    MATA_MATA_FASES.forEach(function(f){f.jogos.forEach(function(j){if(j.id===jid)jogo=j;});});
+    var t1n=res&&res.t1?res.t1:(jogo?jogo.desc.split('×')[0].trim():'Time 1');
+    var t2n=res&&res.t2?res.t2:(jogo?jogo.desc.split('×')[1].trim():'Time 2');
+    if(!picks.length) {
+      panel.innerHTML='<div style="padding:10px 15px;font-family:Barlow Condensed,sans-serif;font-size:12px;color:var(--gray);">Nenhum palpite registado.</div>';
+      return;
+    }
+    var rows='';
+    picks.forEach(function(p){
+      var pvencLabel=p.penalti_venc?(' · Pên: '+(p.penalti_venc==='t1'?t1n:t2n)):'';
+      var ptsObj=res?calcPtsMM(parseInt(p.g1),parseInt(p.g2),p.penalti_venc||null,res.g1,res.g2,res.penalti_venc||null):null;
+      var ptStyle='';
+      if(ptsObj){
+        if(ptsObj.pts>=25)      ptStyle='color:#fbbf24;font-weight:700;';
+        else if(ptsObj.pts>=10) ptStyle='color:var(--green);font-weight:700;';
+        else if(ptsObj.pts>0)   ptStyle='color:var(--purple);font-weight:700;';
+        else                    ptStyle='color:var(--gray);';
+      }
+      var isMe = p.nick===currentNick;
+      rows+='<tr style="'+(isMe?'background:rgba(206,17,38,.08);':'')+'">'
+        +'<td style="padding:7px 15px;font-family:Barlow Condensed,sans-serif;font-size:13px;font-weight:'+(isMe?'700':'400')+';">'
+        +(isMe?'⚽ ':'')+p.nick+'</td>'
+        +'<td style="padding:7px 15px;font-family:Bebas Neue,sans-serif;font-size:16px;text-align:center;">'+p.g1+' x '+p.g2+pvencLabel+'</td>'
+        +(ptsObj!=null
+          ?'<td style="padding:7px 15px;text-align:right;font-family:Bebas Neue,sans-serif;font-size:16px;"><span style="'+ptStyle+'">'+ptsObj.pts+'pts</span></td>'
+          :'<td style="padding:7px 15px;text-align:right;font-family:Barlow Condensed,sans-serif;font-size:11px;color:var(--gray);">aguard.</td>')
+        +'</tr>';
+    });
+    var resLabel = res
+      ? '<span style="color:var(--yellow);font-family:Bebas Neue,sans-serif;font-size:13px;">Resultado: '+res.g1+' x '+res.g2+(res.penalti_venc?' · Pên: '+(res.penalti_venc==='t1'?t1n:t2n):'')+'</span>'
+      : '<span style="color:var(--gray);font-family:Barlow Condensed,sans-serif;font-size:11px;">Aguardando resultado</span>';
+    panel.innerHTML='<div style="border-top:1px solid rgba(255,255,255,.06);">'
+      +'<div style="padding:6px 15px 4px;display:flex;align-items:center;justify-content:space-between;">'
+      +'<span style="font-family:Barlow Condensed,sans-serif;font-size:11px;color:var(--gray);letter-spacing:1px;">PALPITES ('+picks.length+')</span>'
+      +resLabel+'</div>'
+      +'<table style="width:100%;border-collapse:collapse;">'+rows+'</table>'
+      +'</div>';
+  } catch(e) {
+    panel.innerHTML='<div style="padding:10px 15px;font-family:Barlow Condensed,sans-serif;font-size:12px;color:#ff8899;">Erro ao carregar palpites.</div>';
+  }
+}
+
+
   var parts=j.hora.split(':'), h=parseInt(parts[0]), m=parseInt(parts[1]);
   return new Date(j.dataISO+'T'+(h<10?'0':'')+h+':'+(m<10?'0':'')+m+':00-03:00');
 }
@@ -1276,10 +1376,6 @@ function buildCard(j) {
         +'</div>'
         +'<div id="panel_'+j.id+'" style="display:'+(isOpen?'block':'none')+'"></div>';
     }
-      +'<span>🔒 Encerrado · Palpite: <strong style="color:var(--white);margin-left:4px">'+pl+'</strong></span>'
-      +'<span style="font-size:16px;transition:transform .25s;display:inline-block;transform:'+(isOpen?'rotate(180deg)':'rotate(0deg)')+'" id="arr_j_'+j.id+'">▼</span>'
-      +'</div>'
-      +'<div id="panel_'+j.id+'" style="display:'+(isOpen?'block':'none')+'"></div>';
   } else if (pick) {
     var t=new Date(pick.savedAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     bottomHTML='<div class="save-row"><div class="saved-row">✅ <span>'+pick.g1+' x '+pick.g2+'</span> <span style="color:var(--gray);font-weight:400;font-size:11px">· '+t+'</span></div>'
@@ -1387,14 +1483,14 @@ function renderMataMata() {
 
 function buildMMCard(j) {
   var pick=myPalpitesMM[j.id], res=mmResults[j.id], logado=!!currentNick;
-  var locked=!!res;
+  var locked=isLockedMM(j);
+  var status=dlStatusMM(j);
 
   // Extrair nomes do campo desc (ex: "Brasil × Japão") quando ADM ainda não preencheu
   var descParts = j.desc ? j.desc.split('×') : [];
   var descT1 = descParts.length===2 ? descParts[0].trim() : '';
   var descT2 = descParts.length===2 ? descParts[1].trim() : '';
 
-  // Mapa de nomes para códigos de bandeira
   var NOME_COD = {
     'África do Sul':'RSA','Canadá':'CAN','Brasil':'BRA','Japão':'JPN','Alemanha':'GER',
     'Paraguai':'PAR','Holanda':'NED','Marrocos':'MAR','Costa do Marfim':'CIV','Noruega':'NOR',
@@ -1417,12 +1513,14 @@ function buildMMCard(j) {
   var scoreHTML='<div class="score-wrap">'
     +'<div class="team-side">'+flagImg(t1c,t1n)+'<div class="team-name">'+t1n+'</div>'
     +'<div><input class="score-num" type="number" min="0" max="30" id="mm_s1_'+j.id+'"'
-    +' value="'+(pick?pick.g1:'')+'" placeholder="—"'+(locked||!logado?' disabled':'')+'>'
+    +' value="'+(pick?pick.g1:'')+'" placeholder="—"'+(locked||!logado?' disabled':'')
+    +' oninput="onMMScoreChange(\''+j.id+'\')">'
     +'<div class="score-lbl">Gols</div></div></div>'
     +'<div class="vs-mid"><div class="vs-txt">x</div></div>'
     +'<div class="team-side">'+flagImg(t2c,t2n)+'<div class="team-name">'+t2n+'</div>'
     +'<div><input class="score-num" type="number" min="0" max="30" id="mm_s2_'+j.id+'"'
-    +' value="'+(pick?pick.g2:'')+'" placeholder="—"'+(locked||!logado?' disabled':'')+'>'
+    +' value="'+(pick?pick.g2:'')+'" placeholder="—"'+(locked||!logado?' disabled':'')
+    +' oninput="onMMScoreChange(\''+j.id+'\')">'
     +'<div class="score-lbl">Gols</div></div></div></div>';
 
   // Penalty selector (shown when scores are tied and not locked)
@@ -1435,26 +1533,35 @@ function buildMMCard(j) {
     penaltiSel = '<div id="mm_pen_'+j.id+'" style="'+selStyle+'flex-direction:column;align-items:center;gap:8px;padding:10px 15px;border-top:1px solid rgba(255,255,255,.08);background:rgba(124,58,237,.08);">'
       +'<div style="font-family:Barlow Condensed,sans-serif;font-size:12px;color:var(--purple);letter-spacing:1px;font-weight:700;">⚽ QUEM PASSA NOS PÊNALTIS?</div>'
       +'<div style="display:flex;gap:10px;">'
-      +'<button id="mm_pen1_'+j.id+'" onclick="selectPenalti(\''+j.id+'\',\'t1\')" class="pen-btn'+(pvenc==='t1'?' pen-active':'')+'" style="padding:7px 16px;border-radius:8px;border:1.5px solid rgba(255,255,255,.2);background:'+(pvenc==='t1'?'linear-gradient(135deg,#7c3aed,#5b21b6)':'rgba(255,255,255,.05)')+';color:white;font-family:Barlow Condensed,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">'+t1n+'</button>'
-      +'<button id="mm_pen2_'+j.id+'" onclick="selectPenalti(\''+j.id+'\',\'t2\')" class="pen-btn'+(pvenc==='t2'?' pen-active':'')+'" style="padding:7px 16px;border-radius:8px;border:1.5px solid rgba(255,255,255,.2);background:'+(pvenc==='t2'?'linear-gradient(135deg,#7c3aed,#5b21b6)':'rgba(255,255,255,.05)')+';color:white;font-family:Barlow Condensed,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">'+t2n+'</button>'
+      +'<button id="mm_pen1_'+j.id+'" onclick="selectPenalti(\''+j.id+'\',\'t1\')" style="padding:7px 16px;border-radius:8px;border:1.5px solid rgba(255,255,255,.2);background:'+(pvenc==='t1'?'linear-gradient(135deg,#7c3aed,#5b21b6)':'rgba(255,255,255,.05)')+';color:white;font-family:Barlow Condensed,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">'+t1n+'</button>'
+      +'<button id="mm_pen2_'+j.id+'" onclick="selectPenalti(\''+j.id+'\',\'t2\')" style="padding:7px 16px;border-radius:8px;border:1.5px solid rgba(255,255,255,.2);background:'+(pvenc==='t2'?'linear-gradient(135deg,#7c3aed,#5b21b6)':'rgba(255,255,255,.05)')+';color:white;font-family:Barlow Condensed,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">'+t2n+'</button>'
       +'</div></div>';
   }
 
   var bottomHTML='';
   if (!logado) {
     bottomHTML='<div class="locked-row">🔐 Entre para apostar</div>';
-  } else if (locked&&res) {
+  } else if (locked) {
     var pl=pick?pick.g1+' x '+pick.g2:'—';
-    var pvencPick = pick ? pick.penalti_venc : null;
-    var pvencRes = res.penalti_venc;
-    var ptsObj = pick ? calcPtsMM(parseInt(pick.g1),parseInt(pick.g2),pvencPick,res.g1,res.g2,pvencRes) : null;
-    var ptsStr = ptsObj ? (' · <span style="color:var(--yellow);font-weight:700;">'+ptsObj.pts+'pts</span><span style="color:var(--gray);font-size:11px;"> '+ptsObj.label+'</span>') : '';
-    var penInfo = pvencRes ? (' · Pên: <strong>'+(pvencRes==='t1'?t1n:t2n)+'</strong>') : '';
-    bottomHTML='<div class="locked-row" style="flex-direction:column;align-items:flex-start;gap:3px;">'
-      +'<span>🔒 Resultado: <strong>'+res.g1+' x '+res.g2+'</strong>'+penInfo+'</span>'
-      +'<span>Palpite: <strong>'+pl+'</strong>'+(pvencPick?' · Pên: <strong>'+(pvencPick==='t1'?t1n:t2n)+'</strong>':'')+'</span>'
-      +ptsStr
-      +'</div>';
+    var isOpen=!!palpitesAbertosMM[j.id];
+    var resBar='';
+    if(res){
+      var pvencPick = pick ? pick.penalti_venc : null;
+      var pvencRes = res.penalti_venc;
+      var ptsObj = pick ? calcPtsMM(parseInt(pick.g1),parseInt(pick.g2),pvencPick,res.g1,res.g2,pvencRes) : null;
+      var ptsTag = ptsObj ? (' · <span style="font-family:Bebas Neue,sans-serif;font-size:15px;color:'+(ptsObj.pts>=25?'#fbbf24':ptsObj.pts>=10?'var(--green)':ptsObj.pts>0?'var(--purple)':'var(--gray)')+';">'+ptsObj.pts+'pts</span>') : '';
+      var penInfo = pvencRes ? (' · Pên: <strong>'+(pvencRes==='t1'?t1n:t2n)+'</strong>') : '';
+      resBar='<div style="padding:7px 15px;background:rgba(255,255,255,.04);border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;gap:8px;font-family:Barlow Condensed,sans-serif;font-size:13px;">'
+        +'<span style="color:var(--gray);">Resultado:</span>'
+        +'<strong style="color:var(--white);font-family:Bebas Neue,sans-serif;font-size:16px;">'+t1n+' '+res.g1+' x '+res.g2+' '+t2n+'</strong>'
+        +penInfo+ptsTag+'</div>';
+    }
+    bottomHTML=resBar
+      +'<div class="locked-row" style="justify-content:space-between;cursor:pointer;" id="mm_chv_'+j.id+'" onclick="togglePalpitesMM(\''+j.id+'\')">'
+      +'<span>🔒 Encerrado · Palpite: <strong style="color:var(--white);margin-left:4px">'+pl+'</strong></span>'
+      +'<span style="font-size:16px;transition:transform .25s;display:inline-block;transform:'+(isOpen?'rotate(180deg)':'rotate(0deg)')+'" id="mm_arr_'+j.id+'">▼</span>'
+      +'</div>'
+      +'<div id="mm_panel_'+j.id+'" style="display:'+(isOpen?'block':'none')+'"></div>';
   } else if (pick) {
     var t=new Date(pick.savedAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     var pvencLabel = pick.penalti_venc ? (' · Pên: '+(pick.penalti_venc==='t1'?t1n:t2n)) : '';
@@ -1467,7 +1574,7 @@ function buildMMCard(j) {
   var matchSub   = hasTeams ? (j.desc+' · '+j.hora+'h · '+j.local) : (j.hora+'h · '+j.local);
   return '<div class="'+cardCls+'" id="mm_card_'+j.id+'">'
     +'<div class="match-top"><div class="match-meta"><b style="font-size:13px;color:var(--white);">'+matchTitle+'</b><br><span style="font-size:10px;">'+matchSub+'</span></div>'
-    +'<div class="match-meta" style="color:rgba(255,255,255,.4);">'+j.data+'</div></div>'
+    +'<div class="dl-tag dl-'+status+'">'+(status!=='locked'?'<div class="dl-dot"></div>':'')+dlLabelMM(j)+'</div></div>'
     +'<div class="match-body">'+scoreHTML+'</div>'+penaltiSel+bottomHTML+'</div>';
 }
 
