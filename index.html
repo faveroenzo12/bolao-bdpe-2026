@@ -371,7 +371,7 @@ select option{background:#001d4a;color:#ffffff;}::-webkit-scrollbar-track{backgr
     <div class="pts-row"><div><div class="pts-label">🎯 Placar exato do empate + acertou quem passa<div class="pts-example">Chutou 1x1 + Brasil → Saiu 1x1, Brasil passou</div></div></div><div><div class="pts-val" style="color:var(--yellow)">30</div></div></div>
     <div class="pts-row"><div><div class="pts-label">🎯 Placar exato do empate + errou quem passa<div class="pts-example">Chutou 1x1 + Argentina → Saiu 1x1, Brasil passou</div></div></div><div><div class="pts-val">15</div></div></div>
     <div class="pts-row"><div><div class="pts-label">🤝 Empate correto (placar diferente) + acertou quem passa<div class="pts-example">Chutou 2x2 + Brasil → Saiu 1x1, Brasil passou</div></div></div><div><div class="pts-val">20</div></div></div>
-    <div class="pts-row"><div><div class="pts-label">🤝 Empate correto (placar diferente) + errou quem passa<div class="pts-example">Chutou 2x2 + Argentina → Saiu 1x1, Brasil passou</div></div></div><div><div class="pts-val">10</div></div></div>
+    <div class="pts-row"><div><div class="pts-label">🤝 Empate correto (placar diferente) + errou quem passa<div class="pts-example">Chutou 2x2 + Argentina → Saiu 1x1, Brasil passou</div></div></div><div><div class="pts-val">5</div></div></div>
     <div class="pts-row"><div><div class="pts-label">✅ Apostou não-empate + acertou quem passa<div class="pts-example">Chutou 2x1 Brasil → Saiu 1x1, Brasil passou</div></div></div><div><div class="pts-val">10</div></div></div>
     <div class="pts-row"><div><div class="pts-label">❌ Errou<div class="pts-example">Nenhum critério atingido</div></div></div><div><div class="pts-val" style="color:var(--gray)">0</div></div></div>
   </div>
@@ -1774,7 +1774,7 @@ function calcPtsMM(g1p, g2p, pvencP, g1r, g2r, pvencR) {
     if (acertouPlacarExato && acertouPen)  return {pts:30, label:'🎯 Placar exato + pênaltis'};
     if (acertouPlacarExato && !acertouPen) return {pts:15, label:'🎯 Placar exato'};
     if (acertouEmpate && acertouPen)       return {pts:20, label:'🤝 Empate + pênaltis'};
-    if (acertouEmpate && !acertouPen)      return {pts:10, label:'🤝 Empate certo'};
+    if (acertouEmpate && !acertouPen)      return {pts:5, label:'🤝 Empate certo'};
     // Apostou não-empate mas acertou quem passa (explícito ou implícito pelo lado apostado)
     if (!acertouEmpate && acertouPen)      return {pts:10, label:'✅ Acertou o classificado'};
     return {pts:0, label:'❌ Errou'};
