@@ -1990,11 +1990,14 @@ function renderAdmMataMata() {
     fase.jogos.forEach(function(j){
       var res=mmResults[j.id];
       var pv=res?res.penalti_venc||'':'';
-      var t1n=res&&res.t1?res.t1:(j.desc?j.desc.split('×')[0].trim():'Time 1');
-      var t2n=res&&res.t2?res.t2:(j.desc?j.desc.split('×')[1].trim():'Time 2');
+      var descParts=j.desc?j.desc.split('×'):[];
+      var defT1=res&&res.t1?res.t1:(descParts[0]?descParts[0].trim():'');
+      var defT2=res&&res.t2?res.t2:(descParts[1]?descParts[1].trim():'');
+      var t1n=defT1||'Time 1';
+      var t2n=defT2||'Time 2';
       html+='<tr><td style="font-size:11px;color:var(--gray);">'+j.desc+'<br>'+j.data+' '+j.hora+'h</td>'
-        +'<td><input type="text" id="mm_t1_'+j.id+'" value="'+(res&&res.t1?res.t1:'')+'" placeholder="Seleção 1" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:5px;padding:4px 8px;color:white;font-size:12px;width:110px;outline:none;"></td>'
-        +'<td><input type="text" id="mm_t2_'+j.id+'" value="'+(res&&res.t2?res.t2:'')+'" placeholder="Seleção 2" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:5px;padding:4px 8px;color:white;font-size:12px;width:110px;outline:none;"></td>'
+        +'<td><input type="text" id="mm_t1_'+j.id+'" value="'+defT1+'" placeholder="Seleção 1" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:5px;padding:4px 8px;color:white;font-size:12px;width:110px;outline:none;"></td>'
+        +'<td><input type="text" id="mm_t2_'+j.id+'" value="'+defT2+'" placeholder="Seleção 2" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:5px;padding:4px 8px;color:white;font-size:12px;width:110px;outline:none;"></td>'
         +'<td><div style="display:flex;align-items:center;gap:4px;">'
         +'<input class="result-score" type="number" min="0" max="30" id="mm_r1_'+j.id+'" value="'+(res!=null?res.g1:'')+'" placeholder="—">'
         +'<span style="color:var(--gray);">x</span>'
@@ -2049,6 +2052,11 @@ var t1=document.getElementById('mm_t1_'+id).value.trim();
 var t2=document.getElementById('mm_t2_'+id).value.trim();
 var g1=document.getElementById('mm_r1_'+id).value;
 var g2=document.getElementById('mm_r2_'+id).value;
+if(!t1||!t2){
+  var jogoFB=null;
+  MATA_MATA_FASES.forEach(function(f){f.jogos.forEach(function(j){if(j.id===id)jogoFB=j;});});
+  if(jogoFB&&jogoFB.desc){var pts=jogoFB.desc.split('×');if(!t1&&pts[0])t1=pts[0].trim();if(!t2&&pts[1])t2=pts[1].trim();}
+}
 if(!t1||!t2){showToast('err','Preencha os nomes!');return;}
 if(g1===''||g2===''){showToast('err','Preencha o placar!');return;}
 var penalti_venc = _admPen[id] || (mmResults[id]?mmResults[id].penalti_venc||null:null);
