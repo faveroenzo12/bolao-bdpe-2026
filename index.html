@@ -1764,13 +1764,18 @@ function calcPtsMM(g1p, g2p, pvencP, g1r, g2r, pvencR) {
   if (rr === 0) {
     var acertouEmpate = (rp === 0);
     var acertouPlacarExato = acertouEmpate && (g1p===g1r && g2p===g2r);
-    var acertouPen = pvencR && pvencP && pvencP===pvencR;
+    // Se apostou num vencedor (não empate), o lado apostado é o classificado implícito
+    var impliedVenc = !acertouEmpate ? (rp===1 ? 't1' : 't2') : null;
+    var acertouPen = pvencR && (
+      (pvencP && pvencP===pvencR) ||
+      (!pvencP && impliedVenc && impliedVenc===pvencR)
+    );
 
     if (acertouPlacarExato && acertouPen)  return {pts:30, label:'🎯 Placar exato + pênaltis'};
     if (acertouPlacarExato && !acertouPen) return {pts:15, label:'🎯 Placar exato'};
     if (acertouEmpate && acertouPen)       return {pts:20, label:'🤝 Empate + pênaltis'};
     if (acertouEmpate && !acertouPen)      return {pts:10, label:'🤝 Empate certo'};
-    // Apostou não-empate mas acertou quem passa
+    // Apostou não-empate mas acertou quem passa (explícito ou implícito pelo lado apostado)
     if (!acertouEmpate && acertouPen)      return {pts:10, label:'✅ Acertou o classificado'};
     return {pts:0, label:'❌ Errou'};
   }
