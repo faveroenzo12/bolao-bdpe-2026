@@ -376,6 +376,31 @@ select option{background:#001d4a;color:#ffffff;}::-webkit-scrollbar-track{backgr
     <div class="pts-row"><div><div class="pts-label">❌ Errou<div class="pts-example">Nenhum critério atingido</div></div></div><div><div class="pts-val" style="color:var(--gray)">0</div></div></div>
   </div>
 
+  <!-- MULTIPLICADORES -->
+  <div class="card" style="margin-bottom:12px;padding:18px 20px;background:rgba(0,0,0,.2);">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:1.5px;margin-bottom:14px;">⚡ Multiplicadores por Fase</div>
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;color:var(--gray);margin-bottom:14px;line-height:1.5;">Os pontos base acima são multiplicados conforme a fase. Quanto mais longe, mais vale cada palpite.</div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.2);border-radius:9px;">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:var(--white);">🔵 Round of 32 &amp; Oitavas de Final</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:#60a5fa;">×1,2</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.2);border-radius:9px;">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:var(--white);">🟠 Quartas de Final &amp; Semifinais</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:#f97316;">×1,5</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:9px;">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:var(--white);">🔴 Final</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:#ef4444;">×2,0</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.2);border-radius:9px;">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:var(--white);">🥉 Disputa 3º Lugar</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:#60a5fa;">×1,2</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;font-family:'Barlow Condensed',sans-serif;font-size:12px;color:var(--gray);line-height:1.5;">Exemplo: placar exato na Final vale <strong style="color:var(--yellow)">50 pts</strong> (25 × 2,0)</div>
+  </div>
+
   <!-- FASE DE GRUPOS -->
   <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;margin:20px 0 12px;color:var(--blue-light);">⚽ Fase de Grupos</div>
 
@@ -419,7 +444,7 @@ select option{background:#001d4a;color:#ffffff;}::-webkit-scrollbar-track{backgr
   <div class="card" style="text-align:center;padding:18px;margin-top:12px;">
     <div style="font-size:32px;margin-bottom:6px;">🏆</div>
     <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;margin-bottom:6px;">Máximo por jogo (fase de grupos): 35 pontos (com Zebrona)</div>
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1px;margin-bottom:6px;color:var(--purple);">Máximo por jogo (mata-mata com pênaltis): 35 pontos</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1px;margin-bottom:6px;color:var(--purple);">Máximo por jogo (mata-mata com pênaltis): até 60 pts na Final (30 × 2,0)</div>
     <div style="font-size:13px;color:var(--gray);">Máximo especiais: <strong style="color:var(--yellow)">255 pontos</strong></div>
   </div>
 </div>
@@ -1185,6 +1210,7 @@ async function loadPalpitesMM(jid, panel) {
     picks.forEach(function(p){
       var pvencLabel=p.penalti_venc?(' · Pên: '+(p.penalti_venc==='t1'?t1n:t2n)):'';
       var ptsObj=res?calcPtsMM(parseInt(p.g1),parseInt(p.g2),p.penalti_venc||null,res.g1,res.g2,res.penalti_venc||null):null;
+      if(ptsObj) ptsObj.pts=aplicarMultiplicador(ptsObj.pts, jid);
       var ptStyle='';
       if(ptsObj){
         if(ptsObj.pts>=25)      ptStyle='color:#fbbf24;font-weight:700;';
@@ -1468,7 +1494,12 @@ function renderMataMata() {
     var unlocked=!!mmUnlock[fase.id];
     if(unlocked) anyUnlocked=true;
     var badgeStyle=unlocked?'background:linear-gradient(135deg,#7c3aed,#5b21b6);':'background:rgba(255,255,255,0.06);color:var(--gray);';
-    html+='<div class="section-hdr"><div class="section-badge" style="'+badgeStyle+'">'+fase.emoji+' '+fase.label+'</div><div class="section-line"></div><div class="section-sub">'+fase.datas+'</div></div>';
+    var multMap={r32:'×1,2',r16:'×1,2',qf:'×1,5',sf:'×1,5',tp:'×1,2',fi:'×2,0'};
+    var multColorMap={r32:'#60a5fa',r16:'#60a5fa',qf:'#f97316',sf:'#f97316',tp:'#60a5fa',fi:'#ef4444'};
+    var multVal=multMap[fase.id]||'×1,2';
+    var multColor=multColorMap[fase.id]||'#60a5fa';
+    var multBadge=unlocked?'<span style="background:rgba(0,0,0,.35);border:1.5px solid '+multColor+';color:'+multColor+';font-family:Bebas Neue,sans-serif;font-size:13px;letter-spacing:1.5px;padding:2px 9px;border-radius:6px;margin-left:8px;">'+multVal+'</span>':'';
+    html+='<div class="section-hdr"><div class="section-badge" style="'+badgeStyle+'">'+fase.emoji+' '+fase.label+multBadge+'</div><div class="section-line"></div><div class="section-sub">'+fase.datas+'</div></div>';
     if(!unlocked){
       html+='<div class="card" style="text-align:center;padding:28px;color:var(--gray);font-family:Barlow Condensed,sans-serif;font-size:15px;margin-bottom:16px;">🔒 Fase ainda não liberada.</div>';
       return;
@@ -1550,6 +1581,7 @@ function buildMMCard(j) {
       var pvencPick = pick ? pick.penalti_venc : null;
       var pvencRes = res.penalti_venc;
       var ptsObj = pick ? calcPtsMM(parseInt(pick.g1),parseInt(pick.g2),pvencPick,res.g1,res.g2,pvencRes) : null;
+      if(ptsObj) ptsObj.pts=aplicarMultiplicador(ptsObj.pts, j.id);
       var ptsTag = ptsObj ? (' · <span style="font-family:Bebas Neue,sans-serif;font-size:15px;color:'+(ptsObj.pts>=25?'#fbbf24':ptsObj.pts>=10?'var(--green)':ptsObj.pts>0?'var(--purple)':'var(--gray)')+';">'+ptsObj.pts+'pts</span>') : '';
       var penInfo = pvencRes ? (' · Pên: <strong>'+(pvencRes==='t1'?t1n:t2n)+'</strong>') : '';
       resBar='<div style="padding:7px 15px;background:rgba(255,255,255,.04);border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;gap:8px;font-family:Barlow Condensed,sans-serif;font-size:13px;">'
@@ -1713,6 +1745,17 @@ function calcPts(g1p,g2p,g1r,g2r,zebraLevel){
 // ── PONTUAÇÃO MATA-MATA ──
 // g1p,g2p = palpite; pvencP = pênaltis apostado ('t1','t2',null)
 // g1r,g2r = resultado; pvencR = quem passou ('t1','t2',null)
+function getMultiplicadorMM(matchId) {
+  if (!matchId) return 1;
+  if (matchId.startsWith('mm_fi_')) return 2;
+  if (matchId.startsWith('mm_qf_') || matchId.startsWith('mm_sf_')) return 1.5;
+  return 1.2; // mm_r32_, mm_r16_, mm_tp_
+}
+function aplicarMultiplicador(pts, matchId) {
+  if (!pts) return 0;
+  return Math.round(pts * getMultiplicadorMM(matchId));
+}
+
 function calcPtsMM(g1p, g2p, pvencP, g1r, g2r, pvencR) {
   var rr = g1r===g2r ? 0 : g1r>g2r ? 1 : 2; // 0=empate, 1=t1 venceu, 2=t2 venceu
   var rp = g1p===g2p ? 0 : g1p>g2p ? 1 : 2;
@@ -1785,7 +1828,7 @@ function calcTotalUser(nick) {
   });
   myPMM.forEach(function(p){
     var res=mmResults[p.jogo_id];
-    if(res){var r=calcPtsMM(parseInt(p.g1),parseInt(p.g2),p.penalti_venc||null,res.g1,res.g2,res.penalti_venc||null);pts+=r.pts;if(r.pts===25||r.pts===35)exact++;if(r.pts>=10)vc++;}
+    if(res){var r=calcPtsMM(parseInt(p.g1),parseInt(p.g2),p.penalti_venc||null,res.g1,res.g2,res.penalti_venc||null);r.pts=aplicarMultiplicador(r.pts,p.jogo_id);pts+=r.pts;if(r.pts>=25)exact++;if(r.pts>=10)vc++;}
   });
   // Add especiais pts for this user
   var espPicks={};
@@ -2242,6 +2285,7 @@ function renderAdmPalpites() {
         var p   = myPMM.find(function(x){return x.jogo_id===j.id;});
         var res = mmResults[j.id];
         var ptsObj = (p&&res) ? calcPtsMM(parseInt(p.g1),parseInt(p.g2),p.penalti_venc||null,res.g1,res.g2,res.penalti_venc||null) : null;
+        if(ptsObj) ptsObj.pts=aplicarMultiplicador(ptsObj.pts, j.id);
         var savedTime = p&&p.saved_at ? new Date(p.saved_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
         var ptStyle='';
         if(ptsObj){ if(ptsObj.pts>=25) ptStyle='color:#fbbf24;font-weight:700;'; else if(ptsObj.pts>=10) ptStyle='color:var(--green);font-weight:700;'; else if(ptsObj.pts>0) ptStyle='color:var(--purple);font-weight:700;'; else ptStyle='color:var(--gray);'; }
@@ -2833,7 +2877,7 @@ async function exportCSV() {
       MATA_MATA_FASES.forEach(function(f){f.jogos.forEach(function(j){if(j.id===p.jogo_id){fase=f;jogo=j;}});});
       if(!jogo) return;
       var res=mmResults[p.jogo_id];
-      var pts=res?calcPtsMM(parseInt(p.g1),parseInt(p.g2),p.penalti_venc||null,res.g1,res.g2,res.penalti_venc||null).pts:'';
+      var pts=res?aplicarMultiplicador(calcPtsMM(parseInt(p.g1),parseInt(p.g2),p.penalti_venc||null,res.g1,res.g2,res.penalti_venc||null).pts, jogo.id):'';
       csv+='"'+u.nick+'",'+(fase?'"'+fase.label+'"':'"MM"')+',"'+jogo.desc+'","'+jogo.data+'","'+jogo.hora+'","'+p.g1+'x'+p.g2+'","'+(res?res.g1+'x'+res.g2:'')+'","'+pts+'"\n';
     });
   });
