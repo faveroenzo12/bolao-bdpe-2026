@@ -3193,23 +3193,7 @@ async function init() {
 init();
 
 </script>
-<script type="module">
-import { createClient } from 'https://esm.sh/@supabase/supabase-js'
 
-const supabase = createClient('SUA_URL', 'SUA_ANON_KEY')
-
-// escuta mudança no banco
-supabase
-  .channel('refresh')
-  .on('postgres_changes', {
-    event: 'UPDATE',
-    schema: 'public',
-    table: 'settings'
-  }, () => {
-    console.log('Forçando refresh...')
-    location.reload()
-  })
-  .subscribe()
-</script>
+  
 </body>
 </html>
