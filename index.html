@@ -678,10 +678,10 @@ var MATA_MATA_FASES = [
   {
     id:'qf', label:'Quartas de Final', emoji:'💥', datas:'9 – 11 Jul',
     jogos:[
-      {id:'mm_qf_01', data:'09/07 (Qui)',dataISO:'2026-07-09',hora:'17:00',local:'Boston',        desc:'França × Marrocos'},
-      {id:'mm_qf_02', data:'10/07 (Sex)',dataISO:'2026-07-10',hora:'16:00',local:'Los Angeles',   desc:'Espanha × Bélgica'},
-      {id:'mm_qf_03', data:'11/07 (Sáb)',dataISO:'2026-07-11',hora:'18:00',local:'Miami',         desc:'Noruega × Inglaterra'},
-      {id:'mm_qf_04', data:'11/07 (Sáb)',dataISO:'2026-07-11',hora:'22:00',local:'Kansas City',   desc:'Argentina × Suíça'},
+      {id:'mm_qf_01', data:'09/07 (Qui)',dataISO:'2026-07-09',hora:'21:00',local:'Boston',        desc:'França × Marrocos'},
+      {id:'mm_qf_02', data:'10/07 (Sex)',dataISO:'2026-07-10',hora:'20:00',local:'Los Angeles',   desc:'Espanha × Bélgica'},
+      {id:'mm_qf_03', data:'11/07 (Sáb)',dataISO:'2026-07-11',hora:'22:00',local:'Miami',         desc:'Noruega × Inglaterra'},
+      {id:'mm_qf_04', data:'12/07 (Dom)',dataISO:'2026-07-12',hora:'02:00',local:'Kansas City',   desc:'Argentina × Suíça'},
     ]
   },
   {
@@ -799,10 +799,10 @@ var DEADLINES_MM_JS = {
   'mm_r16_06':'2026-07-06T21:00:00-03:00',
   'mm_r16_07':'2026-07-07T13:00:00-03:00',
   'mm_r16_08':'2026-07-07T17:00:00-03:00',
-  'mm_qf_01':'2026-07-09T17:00:00-03:00',
-  'mm_qf_02':'2026-07-10T16:00:00-03:00',
-  'mm_qf_03':'2026-07-11T18:00:00-03:00',
-  'mm_qf_04':'2026-07-11T22:00:00-03:00',
+  'mm_qf_01':'2026-07-09T21:00:00-03:00',
+  'mm_qf_02':'2026-07-10T20:00:00-03:00',
+  'mm_qf_03':'2026-07-11T22:00:00-03:00',
+  'mm_qf_04':'2026-07-12T02:00:00-03:00',
 };
 function deadlineMM(j) { var d=DEADLINES_MM_JS[j.id]; return d?new Date(d):new Date('2099-01-01'); }
 function isLockedMM(j) { return new Date()>=deadlineMM(j)||!!mmResults[j.id]; }
