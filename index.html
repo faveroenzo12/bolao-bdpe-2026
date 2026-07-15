@@ -688,7 +688,7 @@ var MATA_MATA_FASES = [
     id:'sf', label:'Semifinais', emoji:'🌟', datas:'14 – 15 Jul',
     jogos:[
       {id:'mm_sf_01', data:'14/07 (Ter)',dataISO:'2026-07-14',hora:'16:00',local:'Dallas',          desc:'França × Espanha'},
-      {id:'mm_sf_02', data:'15/07 (Qua)',dataISO:'2026-07-15',hora:'16:00',local:'Atlanta',         desc:'Inglaterra × Argentina'},
+      {id:'mm_sf_02', data:'15/07 (Qua)',dataISO:'2026-07-15',hora:'20:00',local:'Atlanta',         desc:'Inglaterra × Argentina'},
     ]
   },
   {
@@ -804,7 +804,7 @@ var DEADLINES_MM_JS = {
   'mm_qf_03':'2026-07-11T22:00:00-03:00',
   'mm_qf_04':'2026-07-12T02:00:00-03:00',
   'mm_sf_01':'2026-07-14T16:00:00-03:00',
-  'mm_sf_02':'2026-07-15T16:00:00-03:00',
+  'mm_sf_02':'2026-07-15T20:00:00-03:00',
 };
 function deadlineMM(j) { var d=DEADLINES_MM_JS[j.id]; return d?new Date(d):new Date('2099-01-01'); }
 function isLockedMM(j) { return new Date()>=deadlineMM(j)||!!mmResults[j.id]; }
