@@ -694,13 +694,13 @@ var MATA_MATA_FASES = [
   {
     id:'tp', label:'Disputa 3º Lugar', emoji:'🥉', datas:'18 Jul',
     jogos:[
-      {id:'mm_tp_01', data:'18/07 (Sáb)',dataISO:'2026-07-18',hora:'16:00',local:'Miami',           desc:'Perd. SF1 × Perd. SF2'},
+      {id:'mm_tp_01', data:'18/07 (Sáb)',dataISO:'2026-07-18',hora:'18:00',local:'Miami',           desc:'França × Inglaterra'},
     ]
   },
   {
     id:'fi', label:'Final', emoji:'🏆', datas:'19 Jul',
     jogos:[
-      {id:'mm_fi_01', data:'19/07 (Dom)',dataISO:'2026-07-19',hora:'16:00',local:'Nova York/NJ',    desc:'Venc. SF1 × Venc. SF2'},
+      {id:'mm_fi_01', data:'19/07 (Dom)',dataISO:'2026-07-19',hora:'16:00',local:'Nova York/NJ',    desc:'Espanha × Argentina'},
     ]
   },
 ];
@@ -805,6 +805,8 @@ var DEADLINES_MM_JS = {
   'mm_qf_04':'2026-07-12T02:00:00-03:00',
   'mm_sf_01':'2026-07-14T16:00:00-03:00',
   'mm_sf_02':'2026-07-15T20:00:00-03:00',
+  'mm_tp_01':'2026-07-18T18:00:00-03:00',
+  'mm_fi_01':'2026-07-19T16:00:00-03:00',
 };
 function deadlineMM(j) { var d=DEADLINES_MM_JS[j.id]; return d?new Date(d):new Date('2099-01-01'); }
 function isLockedMM(j) { return new Date()>=deadlineMM(j)||!!mmResults[j.id]; }
@@ -1155,7 +1157,7 @@ function renderMmJogosHoje() {
     });
   });
   if(!jogosHoje.length){ el.innerHTML=''; return; }
-  var multMap={r32:'×1,2',r16:'×1,2',qf:'×1,5',sf:'×1,5',tp:'×1,2',fi:'×2,0'};
+  var multMap={r32:'×1,2',r16:'×1,2',qf:'×1,5',sf:'×1,5',tp:'×1,5',fi:'×2,0'};
   var multColorMap={r32:'#60a5fa',r16:'#60a5fa',qf:'#f97316',sf:'#f97316',tp:'#60a5fa',fi:'#ef4444'};
   var faseHojeId = jogosHoje[0].id.replace('mm_','').split('_')[0];
   var multVal=multMap[faseHojeId]||'×1,2';
@@ -1195,7 +1197,7 @@ function renderMmPicksContent() {
       return diaExibicaoLabelMM(j) === cMmDia;
     });
     if(!jogos.length) return;
-    var multMap={r32:'×1,2',r16:'×1,2',qf:'×1,5',sf:'×1,5',tp:'×1,2',fi:'×2,0'};
+    var multMap={r32:'×1,2',r16:'×1,2',qf:'×1,5',sf:'×1,5',tp:'×1,5',fi:'×2,0'};
     var multColorMap={r32:'#60a5fa',r16:'#60a5fa',qf:'#f97316',sf:'#f97316',tp:'#60a5fa',fi:'#ef4444'};
     var multVal=multMap[fase.id]||'×1,2';
     var multColor=multColorMap[fase.id]||'#60a5fa';
@@ -1522,7 +1524,7 @@ function renderMataMata() {
     var unlocked=!!mmUnlock[fase.id];
     if(unlocked) anyUnlocked=true;
     var badgeStyle=unlocked?'background:linear-gradient(135deg,#7c3aed,#5b21b6);':'background:rgba(255,255,255,0.06);color:var(--gray);';
-    var multMap={r32:'×1,2',r16:'×1,2',qf:'×1,5',sf:'×1,5',tp:'×1,2',fi:'×2,0'};
+    var multMap={r32:'×1,2',r16:'×1,2',qf:'×1,5',sf:'×1,5',tp:'×1,5',fi:'×2,0'};
     var multColorMap={r32:'#60a5fa',r16:'#60a5fa',qf:'#f97316',sf:'#f97316',tp:'#60a5fa',fi:'#ef4444'};
     var multVal=multMap[fase.id]||'×1,2';
     var multColor=multColorMap[fase.id]||'#60a5fa';
@@ -1776,8 +1778,8 @@ function calcPts(g1p,g2p,g1r,g2r,zebraLevel){
 function getMultiplicadorMM(matchId) {
   if (!matchId) return 1;
   if (matchId.startsWith('mm_fi_')) return 2;
-  if (matchId.startsWith('mm_qf_') || matchId.startsWith('mm_sf_')) return 1.5;
-  return 1.2; // mm_r32_, mm_r16_, mm_tp_
+  if (matchId.startsWith('mm_qf_') || matchId.startsWith('mm_sf_') || matchId.startsWith('mm_tp_')) return 1.5;
+  return 1.2; // mm_r32_, mm_r16_
 }
 function aplicarMultiplicador(pts, matchId) {
   if (!pts) return 0;
